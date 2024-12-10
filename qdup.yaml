@@ -1,0 +1,42 @@
+
+
+hosts:
+  sut: ${{SUT_SERVER}}
+  datasource: ${{DB_SERVER}}
+  driver: ${{LOAD_DRIVER_SERVER}}
+
+roles:
+  datasource:
+    hosts:
+      - datasource
+    setup-scripts:
+      - prepare-superheroes
+      - start-heroes-db
+      - start-villains-db
+      - start-fights-db
+      - start-apicurio
+      - start-kafka
+    cleanup-scripts:
+      - cleanup-superheroes-repo
+  sut:
+    hosts:
+      - sut
+    setup-scripts:
+      - start-heroes-rest
+      - start-villains-rest
+      - start-fights-rest
+      - start-fights-ui
+    cleanup-scripts:
+      - cleanup-superheroes-pods
+  hf:
+    hosts:
+      - driver
+    setup-scripts:
+      - install-hyperfoil-catalog
+      - upload-benchmark
+    run-scripts:
+      - run-benchmark
+    cleanup-scripts:
+      - cleanup-hyperfoil
+
+states:

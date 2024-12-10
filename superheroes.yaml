@@ -1,0 +1,339 @@
+
+# fights-db:    podman run --replace -d -p 27017:27017 --name fights-db -e MONGO_INITDB_DATABASE=fights -e MONGO_INITDB_ROOT_USERNAME=super -e MONGO_INITDB_ROOT_PASSWORD=super -v ./rest-fights/deploy/db-init/initialize-database.js:/docker-entrypoint-initdb.d/1-init-db.js mongo:7.0
+# heroes-db:    podman run -d -p 5432:5432 --name heroes-db -e POSTGRES_USER=superman -e POSTGRES_PASSWORD=superman -e POSTGRES_DB=heroes_database -v ./rest-heroes/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql --replace postgres:16
+# villains-db:  podman run -d -p 5433:5432 --name villains-db -e POSTGRES_USER=superbad -e POSTGRES_PASSWORD=superbad -e POSTGRES_DB=villains_database -v ./rest-villains/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql --replace postgres:16
+# apicurio:     podman run -d -p 8086:8086 --name apicurio -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true" -e QUARKUS_HTTP_PORT=8086 --replace quay.io/apicurio/apicurio-registry-mem:2.6.5.Final
+
+# fights-kafka(deps: apicurio):            podman run -d -p 9092:9092 --name fights-kafka -e LOG_DIR=/tmp/logs -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 --replace --entrypoint sh quay.io/strimzi/kafka:0.43.0-kafka-3.8.0 -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
+# rest-heroes-native(deps: heroes-db):     podman run -d -p 8083:8083 --name rest-heroes-native -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://localhost:5432/heroes_database -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate -e QUARKUS_DATASOURCE_USERNAME=superman -e QUARKUS_DATASOURCE_PASSWORD=superman -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317" --network host --replace quay.io/quarkus-super-heroes/rest-heroes:native-latest
+# rest-villains-native(deps: villains-db): podman run -d -p 8084:8084 --name rest-villains-native -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://localhost:5433/villains_database -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate -e QUARKUS_DATASOURCE_USERNAME=superbad -e QUARKUS_DATASOURCE_PASSWORD=superbad -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317" --network host --replace quay.io/quarkus-super-heroes/rest-villains:native-latest
+
+# rest-fights-native(): podman run -d -p 8084:8084 --name rest-fights-native -e QUARKUS_MONGODB_HOSTS=localhost:27017 -e QUARKUS_LIQUIBASE_MONGODB_MIGRATE_AT_START="false" -e QUARKUS_MONGODB_CREDENTIALS_USERNAME=superfight -e QUARKUS_MONGODB_CREDENTIALS_PASSWORD=superfight -e QUARKUS_STORK_HERO_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:8083 -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:8084 -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://localhost:8086/apis/registry/v2" -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://localhost:9092 --network host --replace quay.io/quarkus-super-heroes/rest-fights:native-latest
+
+# (optional) ui: podman run -d -p 8080:8080 --name ui-super-heroes -e API_BASE_URL=http://localhost:8082 --network host --replace quay.io/quarkus-super-heroes/ui-super-heroes:native-latest
+
+globals:
+  javascript: |
+    // returns the `host` network if running locally otherwise empty string
+    function getNetwork(server){
+      return server == 'LOCAL' ? '--network host' : ''
+    }
+
+
+scripts:
+
+  prepare-superheroes:
+  # clone the repository and checkout the proper commit/branch
+  - sh: if [ -d ${{SUPERHEROES_FOLDER}} ]; then rm -rf ${{SUPERHEROES_FOLDER}}; fi 
+  - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
+  - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
+  
+  build-superheroes:
+  - log: building quarkus-super-heroes...
+
+  ###### HEROES ######
+
+  start-heroes-db:
+  - js: ${{HEROES_ENABLED}}
+    then:
+    - log: starting Heroes database...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name heroes-db
+        -p ${{HEROES_DB_PORT}}:5432
+        -e POSTGRES_USER=superman
+        -e POSTGRES_PASSWORD=superman
+        -e POSTGRES_DB=heroes_database
+        -v ${{SUPERHEROES_FOLDER}}/rest-heroes/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
+        ${{HEROES_DB_IMAGE:'postgres:16'}}
+      then:
+      - regex: (?<HOST.HEROES_DB_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Heroes database
+    - sh: ${{PODMAN}} logs -f ${{HOST.HEROES_DB_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: database system is ready to accept connections
+        then:
+        - countdown: db_heroes_ready 2
+          then:
+          - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Heroes db has not been ready in 1 min
+    - signal: HEROES_DB_READY
+
+  start-heroes-rest:
+  - js: ${{HEROES_ENABLED}}
+    then:
+    - wait-for: HEROES_DB_READY
+    - log: starting Heroes service...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name rest-heroes
+        -p ${{HEROES_REST_PORT}}:8083
+        -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
+        -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
+        -e QUARKUS_DATASOURCE_USERNAME=superman
+        -e QUARKUS_DATASOURCE_PASSWORD=superman
+        -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317"
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
+      then:
+      - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Heroes rest service
+
+  ###### VILLAINS ######
+  start-villains-db:
+  - js: ${{VILLAINS_ENABLED}}
+    then:
+    - log: starting Villains database...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name villains-db
+        -p ${{VILLAINS_DB_PORT}}:5432
+        --memory 1G
+        --cpus 1
+        -e POSTGRES_USER=superbad
+        -e POSTGRES_PASSWORD=superbad
+        -e POSTGRES_DB=villains_database
+        -v ${{SUPERHEROES_FOLDER}}/rest-villains/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
+        ${{VILLAINS_DB_IMAGE:'postgres:16'}}
+      then:
+      - regex: (?<HOST.VILLAINS_DB_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Villains database
+    - sh: ${{PODMAN}} logs -f ${{HOST.VILLAINS_DB_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: database system is ready to accept connections
+        then:
+        - countdown: db_villains_ready 2
+          then:
+          - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Villains db has not been ready in 1 min
+    - signal: VILLAINS_DB_READY
+
+  start-villains-rest:
+  - js: ${{VILLAINS_ENABLED}}
+    then:
+    - wait-for: VILLAINS_DB_READY
+    - log: starting Villains service...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name rest-villains
+        -p ${{VILLAINS_REST_PORT}}:8084
+        -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://${{VILLAINS_DB_HOSTNAME}}:${{VILLAINS_DB_PORT}}/villains_database
+        -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
+        -e QUARKUS_DATASOURCE_USERNAME=superbad
+        -e QUARKUS_DATASOURCE_PASSWORD=superbad
+        -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317"
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
+      then:
+      - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Villains rest service
+
+  ###### FIGHTS ######
+  start-fights-db:
+  - js: ${{FIGHTS_ENABLED}}
+    then:
+    - log: starting Fights database...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name fights-db
+        -p ${{FIGHTS_DB_PORT}}:27017
+        --memory 1G
+        --cpus 1
+        -e MONGO_INITDB_DATABASE=fights
+        -e MONGO_INITDB_ROOT_USERNAME=super
+        -e MONGO_INITDB_ROOT_PASSWORD=super
+        -v ${{SUPERHEROES_FOLDER}}/rest-fights/deploy/db-init/initialize-database.js:/docker-entrypoint-initdb.d/1-init-db.js
+        ${{FIGHTS_DB_IMAGE:'mongo:7.0'}}
+      then:
+      - regex: (?<HOST.FIGHTS_DB_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Figths database
+    - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_DB_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: mongod startup complete
+        then:
+        - countdown: db_fights_ready 2
+          then:
+          - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Fights db has not been ready in 1 min
+    - signal: FIGHTS_DB_READY
+
+  start-apicurio:
+  - js: ${{FIGHTS_ENABLED}}
+    then:
+    - log: starting apicurio registry...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name apicurio
+        -p ${{APICURIO_PORT}}:8086
+        -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true"
+        -e QUARKUS_HTTP_PORT=8086
+        ${{APICURIO_IMAGE:'quay.io/apicurio/apicurio-registry-mem:2.6.5.Final'}}
+      then:
+      - regex: (?<HOST.APICURIO_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Apicurio registry
+    - sh: ${{PODMAN}} logs -f ${{HOST.APICURIO_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: started in.*Listening on
+        then:
+        - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Apicurio registry has not been ready in 1 min
+    - signal: APICURIO_READY
+
+  start-kafka:
+  - js: ${{FIGHTS_ENABLED}}
+    then:
+    - wait-for: APICURIO_READY
+    - log: starting kafka registry...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name fights-kafka
+        -p ${{KAFKA_PORT}}:9092 
+        -e LOG_DIR=/tmp/logs
+        -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092
+        --entrypoint sh
+        ${{KAFKA_IMAGE:'quay.io/strimzi/kafka:0.43.0-kafka-3.8.0'}} -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
+      then:
+      - regex: (?<HOST.KAFKA_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Kafka broker
+    - sh: ${{PODMAN}} logs -f ${{HOST.KAFKA_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: Transition from STARTING to STARTED
+        then:
+        - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Kafka broker has not been ready in 1 min
+    - signal: KAFKA_READY
+
+  start-fights-rest:
+  - js: ${{FIGHTS_ENABLED}}
+    then:
+    - wait-for: FIGHTS_DB_READY
+    - wait-for: KAFKA_READY
+    - log: starting Fights rest service...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name rest-fights 
+        -p ${{FIGHTS_REST_PORT}}:8082
+        --memory 1G
+        --cpus 1
+        -e QUARKUS_MONGODB_HOSTS=localhost:${{FIGHTS_DB_PORT}}
+        -e QUARKUS_LIQUIBASE_MONGODB_MIGRATE_AT_START="false"
+        -e QUARKUS_MONGODB_CREDENTIALS_USERNAME=superfight 
+        -e QUARKUS_MONGODB_CREDENTIALS_PASSWORD=superfight
+        -e QUARKUS_STORK_HERO_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:${{HEROES_REST_PORT}}
+        -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:${{VILLAINS_REST_PORT}}
+        -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://localhost:${{APICURIO_PORT}}/apis/registry/v2"
+        -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://localhost:${{KAFKA_PORT}}
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
+      then:
+      - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Fights rest service
+    - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: started in.*Listening on
+        then:
+        - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Fights rest service has not been ready in 1 min
+    - signal: FIGHTS_REST_READY
+
+  start-fights-ui:
+  - js: ${{UI_ENABLED}}
+    then:
+    - wait-for: FIGHTS_REST_READY
+    - log: starting Fights ui...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name ui-super-heroes
+        -p ${{FIGHTS_UI_PORT}}:8080
+        -e API_BASE_URL=http://localhost:${{FIGHTS_REST_PORT}}
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{FIGHTS_UI_IMAGE:'quay.io/quarkus-super-heroes/ui-super-heroes:native-latest'}}
+
+      then:
+      - regex: (?<HOST.FIGHTS_REST_UI_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Fights ui
+
+  cleanup-superheroes-repo:
+  - sh: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
+
+  cleanup-superheroes-pods:
+  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}}
+
+# TODO:
+# 1. set hostname in non-local env
+# 2. build from source?
+
+states:
+  # container exec
+  PODMAN: podman
+
+  SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
+  SUPERHEROES_COMMIT: main
+  SUPERHEROES_FOLDER: /tmp/quarkus-super-heroes
+
+  # Heroes
+  HEROES_ENABLED: true
+  HEROES_DB_IMAGE: "docker.io/library/postgres:16"
+  # this could be inferred by the HEROES_DB_SERVER
+  HEROES_DB_HOSTNAME: localhost
+  HEROES_DB_PORT: 5432
+
+  HEROES_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-heroes:native-latest"
+  HEROES_REST_PORT: 8083
+
+  # Villains
+  VILLAINS_ENABLED: true
+  VILLAINS_DB_IMAGE: "docker.io/library/postgres:16"
+  # this could be inferred by the HEROES_DB_SERVER
+  VILLAINS_DB_HOSTNAME: localhost
+  VILLAINS_DB_PORT: 5433
+
+  VILLAINS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-villains:native-latest"
+  VILLAINS_REST_PORT: 8084
+
+  # Fights
+  FIGHTS_ENABLED: true
+  FIGHTS_DB_IMAGE: "mongo:7.0"
+  FIGHTS_DB_PORT: 27017
+
+  APICURIO_IMAGE: "quay.io/apicurio/apicurio-registry-mem:2.6.5.Final"
+  APICURIO_PORT: 8086
+
+  KAFKA_IMAGE: "quay.io/strimzi/kafka:0.43.0-kafka-3.8.0"
+  KAFKA_PORT: 9092
+
+  FIGHTS_REST_PORT: 8082
+  FIGHTS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-fights:native-latest"
+
+  UI_ENABLED: true
+  FIGHTS_UI_IMAGE: "quay.io/quarkus-super-heroes/ui-super-heroes:native-latest"
+  FIGHTS_UI_PORT: 8080
