@@ -29,7 +29,7 @@ if [ ! -d "$BASE_BENCHMARKS_FOLDER/$BENCHMARK_FOLDER" ]; then
 fi
 
 # Validate
-if [ "$#" -eq 3 ]; then
+if [ "$#" -ge 3 ]; then
   LOCATION="$3"
   if [[ "$LOCATION" != "local" && "$LOCATION" != "remote" ]]; then
     echo "Error: Server location, if provided, must be either 'local' or 'remote'."

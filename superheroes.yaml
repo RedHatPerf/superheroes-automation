@@ -18,9 +18,26 @@ globals:
     function getNetwork(server){
       return server == 'LOCAL' ? '--network host' : ''
     }
+    function getHostname(server){
+      return server == 'LOCAL' ? 'localhost' : server.split('@').pop()
+    }
 
 
 scripts:
+
+  infer-datastouce-hostnames:
+  # infer the hostnames based on the provided host servers
+  - set-state: HEROES_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+  - set-state: VILLAINS_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+  - set-state: FIGHTS_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+  - set-state: APICURIO_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+  - set-state: KAFKA_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+
+  infer-rest-hostnames:
+  # infer the hostnames based on the provided host servers
+  - set-state: HEROES_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
+  - set-state: VILLAINS_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
+  - set-state: FIGHTS_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
 
   prepare-superheroes:
   # clone the repository and checkout the proper commit/branch
@@ -239,14 +256,14 @@ scripts:
         -p ${{FIGHTS_REST_PORT}}:8082
         --memory 1G
         --cpus 1
-        -e QUARKUS_MONGODB_HOSTS=localhost:${{FIGHTS_DB_PORT}}
+        -e QUARKUS_MONGODB_HOSTS=${{FIGHTS_DB_HOSTNAME}}:${{FIGHTS_DB_PORT}}
         -e QUARKUS_LIQUIBASE_MONGODB_MIGRATE_AT_START="false"
         -e QUARKUS_MONGODB_CREDENTIALS_USERNAME=superfight 
         -e QUARKUS_MONGODB_CREDENTIALS_PASSWORD=superfight
-        -e QUARKUS_STORK_HERO_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:${{HEROES_REST_PORT}}
-        -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=localhost:${{VILLAINS_REST_PORT}}
-        -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://localhost:${{APICURIO_PORT}}/apis/registry/v2"
-        -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://localhost:${{KAFKA_PORT}}
+        -e QUARKUS_STORK_HERO_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${{HEROES_REST_HOSTNAME}}:${{HEROES_REST_PORT}}
+        -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${{VILLAINS_REST_HOSTNAME}}:${{VILLAINS_REST_PORT}}
+        -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
+        -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
       then:
@@ -273,7 +290,7 @@ scripts:
         ${{PODMAN}} run -d --replace
         --name ui-super-heroes
         -p ${{FIGHTS_UI_PORT}}:8080
-        -e API_BASE_URL=http://localhost:${{FIGHTS_REST_PORT}}
+        -e API_BASE_URL=http://${{FIGHTS_REST_HOSTNAME}}:${{FIGHTS_REST_PORT}}
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_UI_IMAGE:'quay.io/quarkus-super-heroes/ui-super-heroes:native-latest'}}
 
@@ -303,36 +320,40 @@ states:
   # Heroes
   HEROES_ENABLED: true
   HEROES_DB_IMAGE: "docker.io/library/postgres:16"
-  # this could be inferred by the HEROES_DB_SERVER
-  HEROES_DB_HOSTNAME: localhost
+  HEROES_DB_HOSTNAME: 
   HEROES_DB_PORT: 5432
 
   HEROES_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-heroes:native-latest"
+  HEROES_REST_HOSTNAME: 
   HEROES_REST_PORT: 8083
 
   # Villains
   VILLAINS_ENABLED: true
   VILLAINS_DB_IMAGE: "docker.io/library/postgres:16"
-  # this could be inferred by the HEROES_DB_SERVER
-  VILLAINS_DB_HOSTNAME: localhost
+  VILLAINS_DB_HOSTNAME: 
   VILLAINS_DB_PORT: 5433
 
   VILLAINS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-villains:native-latest"
+  VILLAINS_REST_HOSTNAME: 
   VILLAINS_REST_PORT: 8084
 
   # Fights
   FIGHTS_ENABLED: true
   FIGHTS_DB_IMAGE: "mongo:7.0"
+  FIGHTS_DB_HOSTNAME: 
   FIGHTS_DB_PORT: 27017
 
   APICURIO_IMAGE: "quay.io/apicurio/apicurio-registry-mem:2.6.5.Final"
+  APICURIO_HOSTNAME: 
   APICURIO_PORT: 8086
 
   KAFKA_IMAGE: "quay.io/strimzi/kafka:0.43.0-kafka-3.8.0"
+  KAFKA_HOSTNAME: 
   KAFKA_PORT: 9092
 
-  FIGHTS_REST_PORT: 8082
   FIGHTS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-fights:native-latest"
+  FIGHTS_REST_HOSTNAME: 
+  FIGHTS_REST_PORT: 8082
 
   UI_ENABLED: true
   FIGHTS_UI_IMAGE: "quay.io/quarkus-super-heroes/ui-super-heroes:native-latest"

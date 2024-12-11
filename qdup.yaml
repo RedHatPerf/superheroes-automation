@@ -2,7 +2,7 @@
 
 hosts:
   sut: ${{SUT_SERVER}}
-  datasource: ${{DB_SERVER}}
+  datasource: ${{DS_SERVER}}
   driver: ${{LOAD_DRIVER_SERVER}}
 
 roles:
@@ -10,6 +10,7 @@ roles:
     hosts:
       - datasource
     setup-scripts:
+      - infer-datastouce-hostnames
       - prepare-superheroes
       - start-heroes-db
       - start-villains-db
@@ -22,6 +23,8 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - infer-datastouce-hostnames
+      - infer-rest-hostnames
       - start-heroes-rest
       - start-villains-rest
       - start-fights-rest
