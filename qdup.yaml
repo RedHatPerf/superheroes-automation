@@ -12,6 +12,8 @@ roles:
     setup-scripts:
       - infer-datastouce-hostnames
       - prepare-superheroes
+      - start-jaeger
+      - start-otel
       - start-heroes-db
       - start-villains-db
       - start-locations-db
@@ -19,7 +21,7 @@ roles:
       - start-apicurio
       - start-kafka
     cleanup-scripts:
-      - cleanup-superheroes-repo
+      - cleanup-datasources
   sut:
     hosts:
       - sut
@@ -33,7 +35,7 @@ roles:
       - start-fights-rest
       - start-fights-ui
     cleanup-scripts:
-      - cleanup-superheroes-pods
+      - cleanup-superheroes
   hf:
     hosts:
       - driver

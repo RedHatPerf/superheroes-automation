@@ -28,11 +28,12 @@ scripts:
 
   infer-datastouce-hostnames:
   # infer the hostnames based on the provided host servers
-  - set-state: HEROES_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
-  - set-state: VILLAINS_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
-  - set-state: FIGHTS_DB_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
-  - set-state: APICURIO_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
-  - set-state: KAFKA_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
+  - set-state: HEROES_DB_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
+  - set-state: VILLAINS_DB_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
+  - set-state: FIGHTS_DB_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
+  - set-state: APICURIO_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
+  - set-state: KAFKA_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
+  - set-state: OTEL_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
 
   infer-services-hostnames:
   # infer the hostnames based on the provided host servers
@@ -49,6 +50,61 @@ scripts:
   
   build-superheroes:
   - log: building quarkus-super-heroes...
+
+  ###### OPENTELEMETRY ######
+  start-jaeger:
+  - log: starting Jaeger...
+  - sh: >
+      ${{PODMAN}} run -d --replace
+      --name jaeger
+      -p 16686:16686
+      -p 14268:14268
+      -p 14250:14250
+      -p ${{OTEL_RECEIVER_PORT}}
+      ${{JAEGER_IMAGE:'docker.io/jaegertracing/all-in-one:1'}}
+    then:
+    - regex: (?<HOST.JAEGER_POD_ID>[a-f0-9]{64})
+      else:
+      - abort: failed to capture pod id for Jaeger
+  - sh: ${{PODMAN}} logs -f ${{HOST.JAEGER_POD_ID}}
+    silent: true # prevent logs to be printed in the terminal
+    watch:
+    - regex: ListenSocket created
+      then:
+      - countdown: jaeger_ready 3
+        then:
+        - ctrlC
+    timer:
+      1m: # max wait time
+      - abort: Jaeger has not been ready in 1 min
+  - signal: JAEGER_READY
+
+  start-otel:
+  - wait-for: JAEGER_READY
+  - log: starting Opentelemetry...
+  - upload: ${{ENV.SCRIPT_DIR}}/monitoring/otel-collector-config.yaml /tmp/
+  - sh: sed -i 's|\$OTEL_HOSTNAME\$|${{OTEL_HOSTNAME}}|g' /tmp/otel-collector-config.yaml
+  - sh: >
+      ${{PODMAN}} run -d --replace
+      --name otel
+      -p 13133:13133
+      -p ${{OTEL_RECEIVER_PORT}}:4317
+      -v /tmp/otel-collector-config.yaml:/conf/otel-collector-config.yml
+      ${{OTEL_IMAGE:'docker.io/otel/opentelemetry-collector:0.112.0'}} --config=/conf/otel-collector-config.yml
+    then:
+    - regex: (?<HOST.OTEL_POD_ID>[a-f0-9]{64})
+      else:
+      - abort: failed to capture pod id for Opentelemetry
+  - sh: ${{PODMAN}} logs -f ${{HOST.OTEL_POD_ID}}
+    silent: true # prevent logs to be printed in the terminal
+    watch:
+    - regex: Begin running and processing data
+      then:
+      - ctrlC
+    timer:
+      1m: # max wait time
+      - abort: Opentelemetry has not been ready in 1 min
+  - signal: OTEL_READY
 
   ###### HEROES ######
 
@@ -86,6 +142,7 @@ scripts:
   - js: ${{HEROES_ENABLED}}
     then:
     - wait-for: HEROES_DB_READY
+    - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
         ${{PODMAN}} run -d --replace
@@ -96,7 +153,7 @@ scripts:
         -e QUARKUS_DATASOURCE_USERNAME=superman
         -e QUARKUS_DATASOURCE_PASSWORD=superman
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317"
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
       then:
@@ -139,6 +196,7 @@ scripts:
   - js: ${{VILLAINS_ENABLED}}
     then:
     - wait-for: VILLAINS_DB_READY
+    - wait-for: OTEL_READY
     - log: starting Villains service...
     - sh: >
         ${{PODMAN}} run -d --replace
@@ -151,7 +209,7 @@ scripts:
         -e QUARKUS_DATASOURCE_USERNAME=superbad
         -e QUARKUS_DATASOURCE_PASSWORD=superbad
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317"
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
       then:
@@ -209,7 +267,7 @@ scripts:
         -e QUARKUS_DATASOURCE_USERNAME=locations
         -e QUARKUS_DATASOURCE_PASSWORD=locations
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
       then:
@@ -309,6 +367,7 @@ scripts:
     then:
     - wait-for: FIGHTS_DB_READY
     - wait-for: KAFKA_READY
+    - wait-for: OTEL_READY
     - log: starting Fights rest service...
     - sh: >
         ${{PODMAN}} run -d --replace
@@ -324,6 +383,7 @@ scripts:
         -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${{VILLAINS_REST_HOSTNAME}}:${{VILLAINS_REST_PORT}}
         -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
         -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
       then:
@@ -362,7 +422,13 @@ scripts:
   cleanup-superheroes-repo:
   - sh: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
 
-  cleanup-superheroes-pods:
+  cleanup-datasources:
+  - script: cleanup-superheroes-repo
+  # remove all pods
+  - sh: ${{PODMAN}} rm -f ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}} ${{HOST.JAEGER_POD_ID:}} ${{HOST.OTEL_POD_ID:}}
+
+
+  cleanup-superheroes:
   - js: ${{FIGHTS_ENABLED}}
     then:
     - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
@@ -379,13 +445,9 @@ scripts:
     then:
     - queue-download: ${{HEROES_REST_LOGS_FILE}}
     - sh: ${{PODMAN}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
-    
-  # remove all pods
-  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}}
 
-# TODO:
-# 1. set hostname in non-local env
-# 2. build from source?
+  # remove all pods
+  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}}
 
 states:
   # container exec
@@ -394,6 +456,13 @@ states:
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main
   SUPERHEROES_FOLDER: /tmp/quarkus-super-heroes
+
+  # Opentelemetry
+  JAEGER_IMAGE: "docker.io/jaegertracing/all-in-one:1"
+  OTEL_IMAGE: "docker.io/otel/opentelemetry-collector:0.112.0"
+  OTEL_PROTOCOL: "http"
+  OTEL_HOSTNAME:
+  OTEL_RECEIVER_PORT: 4317
 
   # Heroes
   HEROES_ENABLED: true
