@@ -5,6 +5,7 @@
 # Path to search for folders
 CWD="$(dirname "$0")"
 BASE_BENCHMARKS_FOLDER="${CWD}/benchmarks"
+BASE_MODES_FOLDER="${CWD}/modes"
 
 QDUP_JAR=${QDUP_JAR:-"/tmp/qDup-0.8.5-uber.jar"}
 
@@ -16,8 +17,8 @@ fi
 
 # Validate image mode
 MODE="$1"
-if [[ "$MODE" != "native" && "$MODE" != "jvm" ]]; then
-  echo "Error: First argument must be either 'native' or 'jvm'."
+if [ ! -f "$BASE_MODES_FOLDER/$MODE.env.yaml" ]; then
+  echo "Error: Modes file '$MODE.env.yaml' does not exist in $BASE_MODES_FOLDER."
   exit 1
 fi
 
@@ -54,7 +55,7 @@ echo "  > Benchmark:        $BENCHMARK_FOLDER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="java -jar ${QDUP_JAR} ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml envs/${MODE}.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
+QDUP_CMD="java -jar ${QDUP_JAR} ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
 
 echo Executing: "$QDUP_CMD"
 

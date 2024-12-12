@@ -38,7 +38,7 @@ $ ./run.sh
 Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]
 ```
 
-* `<native|jvm>`:       which superheroes images you'd like to use, either [`native`](/envs/native.env.yaml) or [`jvm`](/envs/jvm.env.yaml).
+* `<native|jvm>`:       which superheroes images you'd like to use, either [`native`](/modes/native.env.yaml) or [`jvm`](/modes/jvm.env.yaml).
 * `<benchmark_folder>`: which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
 * `[local|remote]`:     where you would like to start the services, either [`local`](/envs/local.env.yaml) or [`remote`](/envs/remote.env.yaml). Default is `local`.
 * `[benchmark_params]`: any additional Hyperfoil benchmark template param you want to override, this strictly depends on the HF benchmark definition. Default is empty string.
@@ -66,7 +66,7 @@ By default, the `run.sh` will print out the qDup command that it will execute su
 run the same directly without passing through the script.
 
 ```bash
-java -jar <qdup.jar> benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml envs/native.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
+java -jar <qdup.jar> benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
 ```
 
 Some of those qDup config files are mandatory and cannot be removed:
@@ -75,7 +75,7 @@ Some of those qDup config files are mandatory and cannot be removed:
 - `superheroes.yaml`
 - `qdup.yaml`
 - either `envs/local.env.yaml` or `envs/remote.env.yaml`
-- either `envs/native.env.yaml` or `envs/jvm.env.yaml`
+- either `modes/native.env.yaml` or `modes/jvm.env.yaml`
 - one of `benchmarks/**/*.env.yaml`
 
 

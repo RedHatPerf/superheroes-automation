@@ -23,6 +23,7 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - prepare-env # should be exposed by env files in /modes folder
       - infer-datastouce-hostnames
       - infer-rest-hostnames
       - start-heroes-rest
