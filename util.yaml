@@ -12,12 +12,12 @@ scripts:
         else:
         - abort: failed to install SDKMAN
     - sh: source "$HOME/.sdkman/bin/sdkman-init.sh"
-    else:
-    - sh: sdk selfupdate force
-      then:
-      - regex: "Successfully upgraded SDKMAN"
-        else:
-        - abort: failed to upgrade SDKMAN
+    # else:
+    # - sh: sdk selfupdate force
+    #   then:
+    #   - regex: "Successfully upgraded SDKMAN"
+    #     else:
+    #     - abort: failed to upgrade SDKMAN
   - sh:
       command: sdk version
       prompt:
