@@ -14,6 +14,7 @@ roles:
       - prepare-superheroes
       - start-heroes-db
       - start-villains-db
+      - start-locations-db
       - start-fights-db
       - start-apicurio
       - start-kafka
@@ -25,9 +26,10 @@ roles:
     setup-scripts:
       - prepare-env # should be exposed by env files in /modes folder
       - infer-datastouce-hostnames
-      - infer-rest-hostnames
+      - infer-services-hostnames
       - start-heroes-rest
       - start-villains-rest
+      - start-locations-grpc
       - start-fights-rest
       - start-fights-ui
     cleanup-scripts:

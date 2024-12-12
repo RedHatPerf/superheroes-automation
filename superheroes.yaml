@@ -3,6 +3,7 @@
 # heroes-db:    podman run -d -p 5432:5432 --name heroes-db -e POSTGRES_USER=superman -e POSTGRES_PASSWORD=superman -e POSTGRES_DB=heroes_database -v ./rest-heroes/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql --replace postgres:16
 # villains-db:  podman run -d -p 5433:5432 --name villains-db -e POSTGRES_USER=superbad -e POSTGRES_PASSWORD=superbad -e POSTGRES_DB=villains_database -v ./rest-villains/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql --replace postgres:16
 # apicurio:     podman run -d -p 8086:8086 --name apicurio -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true" -e QUARKUS_HTTP_PORT=8086 --replace quay.io/apicurio/apicurio-registry-mem:2.6.5.Final
+# locations-db: podman run -d -p 3306:3306 --name locations-db -e MARIADB_USER=locations -e MARIADB_PASSWORD=locations -e MARIADB_DATABASE=locations_database -e MARIADB_ROOT_PASSWORD=locations -e MARIADB_SKIP_TEST_DB=yes --replace mariadb:11.5
 
 # fights-kafka(deps: apicurio):            podman run -d -p 9092:9092 --name fights-kafka -e LOG_DIR=/tmp/logs -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 --replace --entrypoint sh quay.io/strimzi/kafka:0.43.0-kafka-3.8.0 -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
 # rest-heroes-native(deps: heroes-db):     podman run -d -p 8083:8083 --name rest-heroes-native -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://localhost:5432/heroes_database -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate -e QUARKUS_DATASOURCE_USERNAME=superman -e QUARKUS_DATASOURCE_PASSWORD=superman -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="http://otel-collector:4317" --network host --replace quay.io/quarkus-super-heroes/rest-heroes:native-latest
@@ -33,10 +34,11 @@ scripts:
   - set-state: APICURIO_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
   - set-state: KAFKA_HOSTNAME "${{= getHostname( '${{DS_SERVER}}' )}}"
 
-  infer-rest-hostnames:
+  infer-services-hostnames:
   # infer the hostnames based on the provided host servers
   - set-state: HEROES_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
   - set-state: VILLAINS_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
+  - set-state: LOCATIONS_GRPC_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
   - set-state: FIGHTS_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
 
   prepare-superheroes:
@@ -111,8 +113,6 @@ scripts:
         ${{PODMAN}} run -d --replace
         --name villains-db
         -p ${{VILLAINS_DB_PORT}}:5432
-        --memory 1G
-        --cpus 1
         -e POSTGRES_USER=superbad
         -e POSTGRES_PASSWORD=superbad
         -e POSTGRES_DB=villains_database
@@ -143,6 +143,8 @@ scripts:
     - sh: >
         ${{PODMAN}} run -d --replace
         --name rest-villains
+        --memory 1G
+        --cpus 1
         -p ${{VILLAINS_REST_PORT}}:8084
         -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://${{VILLAINS_DB_HOSTNAME}}:${{VILLAINS_DB_PORT}}/villains_database
         -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
@@ -156,6 +158,64 @@ scripts:
       - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64})
         else:
         - abort: failed to capture pod id for Villains rest service
+
+  ###### LOCATIONS ######
+
+  start-locations-db:
+  - js: ${{LOCATIONS_ENABLED}}
+    then:
+    - log: starting Locations database...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name locations-db
+        -p ${{LOCATIONS_DB_PORT}}:3306
+        -e MARIADB_USER=locations
+        -e MARIADB_PASSWORD=locations
+        -e MARIADB_DATABASE=locations_database
+        -e MARIADB_ROOT_PASSWORD=locations
+        -e MARIADB_SKIP_TEST_DB=yes
+        -v ${{SUPERHEROES_FOLDER}}/grpc-locations/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
+        ${{LOCATIONS_DB_IMAGE:'docker.io/library/mariadb:11.5'}}
+      then:
+      - regex: (?<HOST.LOCATIONS_DB_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Locations database
+    - sh: ${{PODMAN}} logs -f ${{HOST.LOCATIONS_DB_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: ready for connections
+        then:
+        - countdown: db_locations_ready 2
+          then:
+          - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Locations db has not been ready in 1 min
+    - signal: LOCATIONS_DB_READY
+
+  start-locations-grpc:
+  - js: ${{LOCATIONS_ENABLED}}
+    then:
+    - wait-for: LOCATIONS_DB_READY
+    - log: starting Locations service...
+    - sh: >
+        ${{PODMAN}} run -d --replace
+        --name grpc-locations
+        --memory 1G
+        --cpus 1
+        -p ${{LOCATIONS_GRPC_PORT}}:8089  
+        -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:mariadb://${{LOCATIONS_DB_HOSTNAME}}:${{LOCATIONS_DB_PORT}}/locations_database
+        -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
+        -e QUARKUS_DATASOURCE_USERNAME=locations
+        -e QUARKUS_DATASOURCE_PASSWORD=locations
+        -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://otel-collector:4317
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
+      then:
+      - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64})
+        else:
+        - abort: failed to capture pod id for Locations grpc service
 
   ###### FIGHTS ######
   start-fights-db:
@@ -303,7 +363,7 @@ scripts:
   - sh: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
 
   cleanup-superheroes-pods:
-  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}}
+  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}}
 
 # TODO:
 # 1. set hostname in non-local env
@@ -336,6 +396,16 @@ states:
   VILLAINS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-villains:native-latest"
   VILLAINS_REST_HOSTNAME: 
   VILLAINS_REST_PORT: 8084
+
+  # Locations
+  LOCATIONS_ENABLED: true
+  LOCATIONS_DB_IMAGE: "docker.io/library/mariadb:11.5"
+  LOCATIONS_DB_HOSTNAME:
+  LOCATIONS_DB_PORT: 3306
+
+  LOCATIONS_GRPC_IMAGE: "quay.io/quarkus-super-heroes/grpc-locations:native-latest"
+  LOCATIONS_GRPC_HOSTNAME: 
+  LOCATIONS_GRPC_PORT: 8089
 
   # Fights
   FIGHTS_ENABLED: true
