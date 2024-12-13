@@ -3,12 +3,15 @@ Automation for running quarkus superheroes benchmark load tests
 
 ## Prerequisites
 
-### QDup
-To run these scripts you need [qDup](https://github.com/Hyperfoil/qDup) that you can download directly from the GitHub repository:
+TL;DR
 
-```bash
-wget https://github.com/Hyperfoil/qDup/releases/download/qDup-0.8.5/qDup-0.8.5-uber.jar
-```
+Install `jbang` tool using `sdkman`.
+
+### QDup
+
+The whole automation is implemented using [qDup](https://github.com/Hyperfoil/qDup), a tool that allows shell commands to be queued up across multiple servers to coordinate performance tests.
+
+In this specific scenario, we will execute `qDup` by making use [jbang](https://www.jbang.dev/documentation/guide/latest) such that you don't have to care about installing Java or any other external dependency.
 
 > [!NOTE]
 > If you want to learn more on qDup, see its [user guide](https://github.com/Hyperfoil/qDup/blob/master/docs/userguide.adoc)
@@ -16,12 +19,17 @@ wget https://github.com/Hyperfoil/qDup/releases/download/qDup-0.8.5/qDup-0.8.5-u
 
 ### Hyperfoil
 
-The benchmark execution is performed using [Hyperfoil](https://github.com/Hyperfoil/Hyperfoil/) benchmarking tool executed through [jbang](https://www.jbang.dev/documentation/guide/latest)
-
-Therefore, you must have `jbang` installed in your system. Checkout the [installation guide](https://www.jbang.dev/documentation/guide/latest/installation.html) or just let the qDup script install it.
+The load testing is performed using [Hyperfoil](https://github.com/Hyperfoil/Hyperfoil/) benchmarking tool, a microservice-oriented distributed benchmark framework. It is executed through [jbang](https://www.jbang.dev/documentation/guide/latest) such that you don't have to care about downloading executables and any dependency.
 
 > [!NOTE]
-> Be aware that if you don't have jbang installed, the qdup script will try to install it using [sdkman](https://sdkman.io/)- which is installed right away if not present already.
+> If you want to learn more on Hyperfoil, see the [Hyperfoil website](https://hyperfoil.io).
+
+### JBang
+
+Therefore, the only required tool that you have to install is [jbang](https://www.jbang.dev/documentation/guide/latest). 
+
+Checkout the [installation guide](https://www.jbang.dev/documentation/guide/latest/installation.html) for more details on how you can install it, the suggested approach is by using [sdkman](https://sdkman.io/) - which is installed right away by the qDup script if not present already. 
+
 
 ## Run using script
 
@@ -66,7 +74,7 @@ By default, the `run.sh` will print out the qDup command that it will execute su
 run the same directly without passing through the script.
 
 ```bash
-java -jar <qdup.jar> benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
+jbang qDup@hyperfoil benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
 ```
 
 Some of those qDup config files are mandatory and cannot be removed:

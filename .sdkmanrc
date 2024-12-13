@@ -2,3 +2,4 @@
 # Add key=value pairs of SDKs to use below
 java=21.0.5-tem
 maven=3.9.9
+jbang=0.121.0
