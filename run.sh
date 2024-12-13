@@ -55,7 +55,7 @@ echo "  > Benchmark:        $BENCHMARK_FOLDER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="jbang qDup@hyperfoil ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
+QDUP_CMD="jbang qDup@hyperfoil util.yaml ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.env.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
 
 echo Executing: "$QDUP_CMD"
 

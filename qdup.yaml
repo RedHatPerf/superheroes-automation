@@ -26,9 +26,10 @@ roles:
     hosts:
       - sut
     setup-scripts:
-      - prepare-env # should be exposed by env files in /modes folder
+      - prepare-images # should be exposed by env files in /modes folder
       - infer-datastouce-hostnames
       - infer-services-hostnames
+      - wait-for-images
       - start-heroes-rest
       - start-villains-rest
       - start-locations-grpc

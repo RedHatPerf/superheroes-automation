@@ -47,15 +47,15 @@ scripts:
   - sh: if [ -d ${{SUPERHEROES_FOLDER}} ]; then rm -rf ${{SUPERHEROES_FOLDER}}; fi 
   - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
   - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
-  
-  build-superheroes:
-  - log: building quarkus-super-heroes...
+
+  wait-for-images:
+  - wait-for: SUPERHEROES_IMAGES_READY
 
   ###### OPENTELEMETRY ######
   start-jaeger:
   - log: starting Jaeger...
   - sh: >
-      ${{PODMAN}} run -d --replace
+      ${{PODMAN}} run -d
       --name jaeger
       -p 16686:16686
       -p 14268:14268
@@ -85,7 +85,7 @@ scripts:
   - upload: ${{ENV.SCRIPT_DIR}}/monitoring/otel-collector-config.yaml /tmp/
   - sh: sed -i 's|\$OTEL_HOSTNAME\$|${{OTEL_HOSTNAME}}|g' /tmp/otel-collector-config.yaml
   - sh: >
-      ${{PODMAN}} run -d --replace
+      ${{PODMAN}} run -d
       --name otel
       -p 13133:13133
       -p ${{OTEL_RECEIVER_PORT}}:4317
@@ -113,7 +113,7 @@ scripts:
     then:
     - log: starting Heroes database...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name heroes-db
         -p ${{HEROES_DB_PORT}}:5432
         -e POSTGRES_USER=superman
@@ -145,7 +145,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name rest-heroes
         -p ${{HEROES_REST_PORT}}:8083
         -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
@@ -167,7 +167,7 @@ scripts:
     then:
     - log: starting Villains database...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name villains-db
         -p ${{VILLAINS_DB_PORT}}:5432
         -e POSTGRES_USER=superbad
@@ -199,7 +199,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Villains service...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name rest-villains
         --memory 1G
         --cpus 1
@@ -224,7 +224,7 @@ scripts:
     then:
     - log: starting Locations database...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name locations-db
         -p ${{LOCATIONS_DB_PORT}}:3306
         -e MARIADB_USER=locations
@@ -257,7 +257,7 @@ scripts:
     - wait-for: LOCATIONS_DB_READY
     - log: starting Locations service...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name grpc-locations
         --memory 1G
         --cpus 1
@@ -281,7 +281,7 @@ scripts:
     then:
     - log: starting Fights database...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name fights-db
         -p ${{FIGHTS_DB_PORT}}:27017
         --memory 1G
@@ -313,7 +313,7 @@ scripts:
     then:
     - log: starting apicurio registry...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name apicurio
         -p ${{APICURIO_PORT}}:8086
         -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true"
@@ -340,7 +340,7 @@ scripts:
     - wait-for: APICURIO_READY
     - log: starting kafka registry...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name fights-kafka
         -p ${{KAFKA_PORT}}:9092 
         -e LOG_DIR=/tmp/logs
@@ -370,7 +370,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Fights rest service...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name rest-fights 
         -p ${{FIGHTS_REST_PORT}}:8082
         --memory 1G
@@ -407,7 +407,7 @@ scripts:
     - wait-for: FIGHTS_REST_READY
     - log: starting Fights ui...
     - sh: >
-        ${{PODMAN}} run -d --replace
+        ${{PODMAN}} run -d
         --name ui-super-heroes
         -p ${{FIGHTS_UI_PORT}}:8080
         -e API_BASE_URL=http://${{FIGHTS_REST_HOSTNAME}}:${{FIGHTS_REST_PORT}}
@@ -451,7 +451,7 @@ scripts:
 
 states:
   # container exec
-  PODMAN: podman
+  PODMAN: docker
 
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main

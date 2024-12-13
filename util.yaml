@@ -25,3 +25,13 @@ scripts:
       # SDKMAN 5.9.1+575
     then:
     - regex: "SDKMAN (?<RUN.sdk_version>[\\d\\.\\+]+)"
+  
+
+  sdk-select-java:
+  - script: install-sdkman # requires util.yaml
+  - sh:
+      command: sdk install java ${{JAVA_VERSION:21.0.5-tem}}
+      prompt:
+        "set as default? (Y/n): ": "Y"
+  - sh:
+      command: sdk use java ${{JAVA_VERSION:21.0.5-tem}}
