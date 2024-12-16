@@ -39,7 +39,7 @@ scripts:
   - queue-download: /tmp/superheroes.build.log
   - script: sdk-select-java
     with:
-      JAVA_VERSION: 21.0.5-graal
+      JAVA_VERSION: 23.1.5.r21-mandrel
   - sh: >
       ./mvnw clean package -DskipTests -Pnative
       -Dmaven.compiler.release=21
