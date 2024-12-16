@@ -441,7 +441,7 @@ scripts:
     then:
     - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
     - sh: ${{PODMAN}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
-  - js: ${{LOCATIONS_ENABLED}}
+  - js: ${{HEROES_ENABLED}}
     then:
     - queue-download: ${{HEROES_REST_LOGS_FILE}}
     - sh: ${{PODMAN}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
