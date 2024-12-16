@@ -1,0 +1,72 @@
+
+globals:
+  javascript: |
+    // returns the maven modules to build in according to the enabled services
+    function getProjects(heroes, villains, locations, fights){
+      const projects = ["rest-heroes", "rest-villains", "grpc-locations", "rest-fights"]
+      const mask = [heroes, villains, locations, fights]
+      return projects.filter((_, index) => mask[index]).join(",");;
+    }
+  
+scripts:
+
+  clone-superheroes:
+  # clone the repository and checkout the proper commit/branch
+  - sh: if [ -d ${{SUPERHEROES_BUILD_FOLDER}} ]; then rm -rf ${{SUPERHEROES_BUILD_FOLDER}}; fi 
+  - sh: git clone --depth 1 ${{SUPERHEROES_BUILD_REPO}} ${{SUPERHEROES_BUILD_FOLDER}}
+  - sh: cd ${{SUPERHEROES_BUILD_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_BUILD_COMMIT:main}} && git checkout ${{SUPERHEROES_BUILD_COMMIT:main}}
+
+# override container images states with the one created as part of this test
+  prepare-images:
+  - log: building custom version of native images..
+  - script: clone-superheroes
+  # override Dockerfiles, e.g., Dockerfile or whatever else you need
+  # TODO(user): change the filenames in according to what you need to override, either native or jvm
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.heroes.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.villains.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.locations.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.fights.native /tmp
+
+  - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
+  - sh: cp /tmp/Dockerfile.heroes.native rest-heroes/src/main/docker/Dockerfile.native
+  - sh: cp /tmp/Dockerfile.villains.native rest-villains/src/main/docker/Dockerfile.native
+  - sh: cp /tmp/Dockerfile.locations.native grpc-locations/src/main/docker/Dockerfile.native
+  - sh: cp /tmp/Dockerfile.fights.native rest-fights/src/main/docker/Dockerfile.native
+
+  - queue-download: /tmp/superheroes.build.log
+  - script: sdk-select-java
+    with:
+      JAVA_VERSION: ${{JAVA_VERSION}}
+  
+  # TODO(user): change the build script in according to the build you are willing to do
+  - sh: >
+      ./mvnw clean package -DskipTests -Pnative
+      -Dmaven.compiler.release=21
+      -Dquarkus.http.host=0.0.0.0
+      -Dquarkus.native.container-build=true
+      -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21
+      -Dquarkus.container-image.build=true
+      -Dquarkus.container-image.push=false
+      -Dquarkus.container-image.tag=${{SUPERHEROES_CUSTOM_TAG}}
+      -Dquarkus.native.additional-build-args=-H:-DeleteLocalSymbols,-H:-OmitInlinedMethodDebugLineInfo,-H:+PreserveFramePointer 
+      -Dquarkus.native.debug.enabled
+      -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
+  
+  # override images
+  - set-state: HEROES_REST_IMAGE "quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: VILLAINS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: FIGHTS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}}"
+  - signal: SUPERHEROES_IMAGES_READY
+
+
+states:
+  SUPERHEROES_BUILD_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
+  SUPERHEROES_BUILD_COMMIT: main
+  SUPERHEROES_BUILD_FOLDER: /tmp/build-quarkus-super-heroes
+
+  SUPERHEROES_CUSTOM_TAG: local-main
+
+  # change these values
+  CONTAINERFILES_FOLDER: CHANGE_ME
+  JAVA_VERSION: CHANGE_ME

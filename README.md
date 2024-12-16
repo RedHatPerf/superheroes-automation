@@ -46,7 +46,7 @@ $ ./run.sh
 Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]
 ```
 
-* `<native|jvm>`:       which superheroes images you'd like to use, either [`native`](/modes/native.env.yaml) or [`jvm`](/modes/jvm.env.yaml).
+* `<native|jvm>`:       which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml).
 * `<benchmark_folder>`: which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
 * `[local|remote]`:     where you would like to start the services, either [`local`](/envs/local.env.yaml) or [`remote`](/envs/remote.env.yaml). Default is `local`.
 * `[benchmark_params]`: any additional Hyperfoil benchmark template param you want to override, this strictly depends on the HF benchmark definition. Default is empty string.
@@ -74,7 +74,7 @@ By default, the `run.sh` will print out the qDup command that it will execute su
 run the same directly without passing through the script.
 
 ```bash
-jbang qDup@hyperfoil benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.env.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
+jbang qDup@hyperfoil benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.script.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
 ```
 
 Some of those qDup config files are mandatory and cannot be removed:
@@ -83,7 +83,7 @@ Some of those qDup config files are mandatory and cannot be removed:
 - `superheroes.yaml`
 - `qdup.yaml`
 - either `envs/local.env.yaml` or `envs/remote.env.yaml`
-- either `modes/native.env.yaml` or `modes/jvm.env.yaml`
+- either `modes/native.script.yaml` or `modes/jvm.script.yaml`
 - one of `benchmarks/**/*.env.yaml`
 
 
@@ -115,3 +115,44 @@ benchmarks/get-all-heroes
 
 * `$BENCHMARK_NAME.env.yaml`: contains required qdup states/params to properly retrieve the benchmark definition
 * `$BENCHMARK_NAME.hf.yaml`: contains the Hyperfoil benchmark definition
+
+## Custom builds
+
+The automation is generic enough to let you build the superheroes services container images and run them instead of the currently available ones.
+
+### How to build custom images?
+
+Create a new qDup file under [modes](/modes/) directory, you can take as example the [custom.build.tmpl.yaml](/modes/custom.build.tmpl.yaml) template file using the following format `ENV_IDENTIFIER.env.yaml`.
+
+And then simply call the `run.sh` with your new qDup file instead of the defaults `native`/`jvm`, e.g.,
+```bash
+./run.sh ENV_IDENTIFIER get-all-heroes local
+```
+
+> [!NOTE]
+> As another example you can check [custom.native.script.yaml](/modes/custom.native.script.yaml) script file that contains some instructions to rebuild the native images keeping the debug file in the final container.
+
+### How does it work?
+
+The new qDup images file MUST provide an implementation for the `prepare-images` script and here you can do whatever you want in order to build the images the way you want.
+
+```yaml
+scripts:
+  ...
+  prepare-images:
+  - log: building custom version of native images..
+  - script: clone-superheroes
+  ...
+```
+
+You just need to remember to override the superheroes images using `set-state`, e.g.,
+
+```yaml
+  - set-state: HEROES_REST_IMAGE "quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: VILLAINS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
+  - set-state: FIGHTS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}}"
+```
+
+> [!NOTE]
+> If your images are already available somewhere you can simply override the images states without actually re-building anything.

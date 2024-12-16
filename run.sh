@@ -17,8 +17,10 @@ fi
 
 # Validate image mode
 MODE="$1"
-if [ ! -f "$BASE_MODES_FOLDER/$MODE.env.yaml" ]; then
-  echo "Error: Modes file '$MODE.env.yaml' does not exist in $BASE_MODES_FOLDER."
+if [ ! -f "$BASE_MODES_FOLDER/$MODE.script.yaml" ]; then
+  echo "Error: Script file '$MODE.script.yaml' does not exist in $BASE_MODES_FOLDER."
+  echo "Available modes are:"
+  ls -1 $BASE_MODES_FOLDER/*.script.yaml
   exit 1
 fi
 
@@ -26,6 +28,8 @@ fi
 BENCHMARK_FOLDER="$2"
 if [ ! -d "$BASE_BENCHMARKS_FOLDER/$BENCHMARK_FOLDER" ]; then
   echo "Error: Benchmark folder '$BENCHMARK_FOLDER' does not exist in $BASE_BENCHMARKS_FOLDER."
+  echo "Available benchmarks are:"
+  ls -1 $BASE_BENCHMARKS_FOLDER
   exit 1
 fi
 
@@ -55,7 +59,7 @@ echo "  > Benchmark:        $BENCHMARK_FOLDER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="jbang qDup@hyperfoil util.yaml ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.env.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
+QDUP_CMD="jbang qDup@hyperfoil util.yaml ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml hyperfoil.yaml superheroes.yaml qdup.yaml $HF_BENCHMARK_PARAMS"
 
 echo Executing: "$QDUP_CMD"
 

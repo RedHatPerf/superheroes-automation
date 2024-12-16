@@ -1,9 +1,9 @@
 # This Hyperfoil benchmark runs a GET to the /api/villains endpoint
 # Here is a list of all the parameters and their default values that can be adjusted when running:
 #
-# VILLAIN_PROTOCOL=http (The protocol used by the benchmark)
-# VILLAIN_HOST=localhost (The host the rest-villains application is running on)
-# VILLAIN_PORT=8084 (The port the rest-villains application is running on)
+# SERVICE_PROTOCOL=http (The protocol used by the benchmark)
+# SERVICE_HOST=localhost (The host the rest-villains application is running on)
+# SERVICE_PORT=8084 (The port the rest-villains application is running on)
 # SHARED_CONNECTIONS=400 (The number of connections to share across the requests)
 # USERS_PER_SEC=20 (The number of users per second)
 # MAX_SESSIONS=200 (The maximum number of hyperfoil sessions to make available)
@@ -11,9 +11,9 @@
 
 name: get-all-villains
 http:
-  - protocol: !param VILLAIN_PROTOCOL http
-    host: !param VILLAIN_HOST localhost
-    port: !param VILLAIN_PORT 8084
+  - protocol: !param SERVICE_PROTOCOL http
+    host: !param SERVICE_HOST localhost
+    port: !param SERVICE_PORT 8084
     sharedConnections: !param SHARED_CONNECTIONS 400
 
 phases:

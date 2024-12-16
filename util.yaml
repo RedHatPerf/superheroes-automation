@@ -1,3 +1,15 @@
+
+globals:
+  javascript: |
+    // returns the `host` network if running locally otherwise empty string
+    function getNetwork(server){
+      return server == 'LOCAL' ? '--network host' : ''
+    }
+    // retrieves the hostname from the specified server
+    function getHostname(server){
+      return server == 'LOCAL' ? 'localhost' : server.split('@').pop()
+    }
+
 scripts:
   install-sdkman: #https://sdkman.io/install
   - sh:

@@ -13,17 +13,6 @@
 
 # (optional) ui: podman run -d -p 8080:8080 --name ui-super-heroes -e API_BASE_URL=http://localhost:8082 --network host --replace quay.io/quarkus-super-heroes/ui-super-heroes:native-latest
 
-globals:
-  javascript: |
-    // returns the `host` network if running locally otherwise empty string
-    function getNetwork(server){
-      return server == 'LOCAL' ? '--network host' : ''
-    }
-    function getHostname(server){
-      return server == 'LOCAL' ? 'localhost' : server.split('@').pop()
-    }
-
-
 scripts:
 
   infer-datastouce-hostnames:

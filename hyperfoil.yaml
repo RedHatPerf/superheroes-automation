@@ -1,4 +1,3 @@
-
 scripts:
   sdk-select-jbang:
   - script: install-sdkman # requires util.yaml
@@ -23,7 +22,7 @@ scripts:
   - queue-download: ${{HF_REPORT_FILE}}
   - queue-download: ${{HF_BENCHMARK_REF}}
   - log: running Hyperfoil benchmark..
-  - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}}
+  - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}} -PSERVICE_HOST=${{= getHostname( '${{SUT_SERVER}}' )}}
 
   cleanup-hyperfoil:
   - sh: rm ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
