@@ -46,7 +46,7 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params
 * `<native|jvm|<custom>>`:  which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml). Modes are extensible by creating a custom (`/modes/<custom>.script.yaml`).
 * `<benchmark_folder>`:     which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
 * `[local|remote]`:         where you would like to start the services, either [`local`](/envs/local.env.yaml) to run on `localhost` or [`remote`](/envs/remote.env.yaml). Default is `local`.  **Please note:** for `remote` environments, the current user MUST have passwordless ssh access to any remote machines defined in `/envs/remote.env.yaml`.
-* `[benchmark_params]`:     any additional Hyperfoil benchmark template param you want to override, this strictly depends on the HF benchmark definition. Default is empty string.
+* `[additional_params]`:     any additional parameters you want to override. E.g. to override the default Hyperfoil benchmark templates parameters, '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'. This strictly depends on the HF benchmark definition. Default is empty string.
 
 > [!NOTE]
 > If you use `/envs/remote.env.yaml`, please ensure to override variables contained in it with your specific server hostanames
@@ -62,7 +62,7 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params
 #### Get all villains locally with 20s duration
 
 ```bash
-./run.sh native get-all-villains local "-PDURATION=20s"
+./run.sh native get-all-villains local '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'
 ```
 
 ## Run directly using qDup

@@ -41,7 +41,7 @@ scripts:
   start-jaeger:
   - log: starting Jaeger...
   - sh: >
-      ${{PODMAN}} run -d
+      ${{CONTAINER_RUNTIME}} run -d
       --name jaeger
       -p 16686:16686
       -p 14268:14268
@@ -52,7 +52,7 @@ scripts:
     - regex: (?<HOST.JAEGER_POD_ID>[a-f0-9]{64}$)
       else:
       - abort: failed to capture pod id for Jaeger
-  - sh: ${{PODMAN}} logs -f ${{HOST.JAEGER_POD_ID}}
+  - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.JAEGER_POD_ID}}
     silent: true # prevent logs to be printed in the terminal
     watch:
     - regex: ListenSocket created
@@ -71,7 +71,7 @@ scripts:
   - upload: ${{ENV.SCRIPT_DIR}}/monitoring/otel-collector-config.yaml /tmp/
   - sh: sed -i 's|\$OTEL_HOSTNAME\$|${{OTEL_HOSTNAME}}|g' /tmp/otel-collector-config.yaml
   - sh: >
-      ${{PODMAN}} run -d
+      ${{CONTAINER_RUNTIME}} run -d
       --name otel
       -p 13133:13133
       -p ${{OTEL_RECEIVER_PORT}}:4317
@@ -81,7 +81,7 @@ scripts:
     - regex: (?<HOST.OTEL_POD_ID>[a-f0-9]{64}$)
       else:
       - abort: failed to capture pod id for Opentelemetry
-  - sh: ${{PODMAN}} logs -f ${{HOST.OTEL_POD_ID}}
+  - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.OTEL_POD_ID}}
     silent: true # prevent logs to be printed in the terminal
     watch:
     - regex: Begin running and processing data
@@ -99,7 +99,7 @@ scripts:
     then:
     - log: starting Heroes database...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name heroes-db
         -p ${{HEROES_DB_PORT}}:5432
         -e POSTGRES_USER=superman
@@ -111,7 +111,7 @@ scripts:
       - regex: (?<HOST.HEROES_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Heroes database
-    - sh: ${{PODMAN}} logs -f ${{HOST.HEROES_DB_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: database system is ready to accept connections
@@ -131,7 +131,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name rest-heroes
         -p ${{HEROES_REST_PORT}}:8083
         -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
@@ -153,7 +153,7 @@ scripts:
     then:
     - log: starting Villains database...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name villains-db
         -p ${{VILLAINS_DB_PORT}}:5432
         -e POSTGRES_USER=superbad
@@ -165,7 +165,7 @@ scripts:
       - regex: (?<HOST.VILLAINS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Villains database
-    - sh: ${{PODMAN}} logs -f ${{HOST.VILLAINS_DB_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.VILLAINS_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: database system is ready to accept connections
@@ -185,7 +185,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Villains service...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name rest-villains
         --memory 1G
         --cpus 1
@@ -210,7 +210,7 @@ scripts:
     then:
     - log: starting Locations database...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name locations-db
         -p ${{LOCATIONS_DB_PORT}}:3306
         -e MARIADB_USER=locations
@@ -224,7 +224,7 @@ scripts:
       - regex: (?<HOST.LOCATIONS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Locations database
-    - sh: ${{PODMAN}} logs -f ${{HOST.LOCATIONS_DB_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.LOCATIONS_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: ready for connections
@@ -243,7 +243,7 @@ scripts:
     - wait-for: LOCATIONS_DB_READY
     - log: starting Locations service...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name grpc-locations
         --memory 1G
         --cpus 1
@@ -267,7 +267,7 @@ scripts:
     then:
     - log: starting Fights database...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name fights-db
         -p ${{FIGHTS_DB_PORT}}:27017
         --memory 1G
@@ -281,7 +281,7 @@ scripts:
       - regex: (?<HOST.FIGHTS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Figths database
-    - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_DB_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.FIGHTS_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: mongod startup complete
@@ -299,7 +299,7 @@ scripts:
     then:
     - log: starting apicurio registry...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name apicurio
         -p ${{APICURIO_PORT}}:8086
         -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true"
@@ -309,7 +309,7 @@ scripts:
       - regex: (?<HOST.APICURIO_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Apicurio registry
-    - sh: ${{PODMAN}} logs -f ${{HOST.APICURIO_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.APICURIO_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -326,7 +326,7 @@ scripts:
     - wait-for: APICURIO_READY
     - log: starting kafka registry...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name fights-kafka
         -p ${{KAFKA_PORT}}:9092 
         -e LOG_DIR=/tmp/logs
@@ -337,7 +337,7 @@ scripts:
       - regex: (?<HOST.KAFKA_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Kafka broker
-    - sh: ${{PODMAN}} logs -f ${{HOST.KAFKA_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.KAFKA_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: Transition from STARTING to STARTED
@@ -356,7 +356,7 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Fights rest service...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name rest-fights 
         -p ${{FIGHTS_REST_PORT}}:8082
         --memory 1G
@@ -376,7 +376,7 @@ scripts:
       - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Fights rest service
-    - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -393,7 +393,7 @@ scripts:
     - wait-for: FIGHTS_REST_READY
     - log: starting Fights ui...
     - sh: >
-        ${{PODMAN}} run -d
+        ${{CONTAINER_RUNTIME}} run -d
         --name ui-super-heroes
         -p ${{FIGHTS_UI_PORT}}:8080
         -e API_BASE_URL=http://${{FIGHTS_REST_HOSTNAME}}:${{FIGHTS_REST_PORT}}
@@ -413,7 +413,7 @@ scripts:
   cleanup-datasources:
   - script: cleanup-superheroes-repo
   # remove all pods
-  - sh: ${{PODMAN}} rm -f ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}} ${{HOST.JAEGER_POD_ID:}} ${{HOST.OTEL_POD_ID:}}
+  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}} ${{HOST.JAEGER_POD_ID:}} ${{HOST.OTEL_POD_ID:}}
 
 
   cleanup-superheroes:
@@ -422,32 +422,32 @@ scripts:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
       then:
       - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
-      - sh: ${{PODMAN}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
       then:
       - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
-      - sh: ${{PODMAN}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
-      - sh: ${{PODMAN}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
   - js: ${{HEROES_ENABLED}}
     then:
     - read-state: ${{HOST.HEROES_REST_POD_ID}}
       then:
       - queue-download: ${{HEROES_REST_LOGS_FILE}}
-      - sh: ${{PODMAN}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
 
   # remove all pods
-  - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}}
+  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}}
 
 states:
   # container exec
-  PODMAN: docker
+  CONTAINER_RUNTIME: docker
 
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main
