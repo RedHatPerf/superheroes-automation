@@ -38,7 +38,6 @@ scripts:
     then:
     - regex: "SDKMAN (?<RUN.sdk_version>[\\d\\.\\+]+)"
   
-
   sdk-select-java:
   - script: install-sdkman # requires util.yaml
   - sh:
@@ -47,3 +46,21 @@ scripts:
         "set as default? (Y/n): ": "Y"
   - sh:
       command: sdk use java ${{JAVA_VERSION:21.0.5-tem}}
+
+  sdk-select-jbang:
+  - script: install-sdkman # requires util.yaml
+  - sh:
+      command: sdk install jbang ${{JBANG_VERSION:0.121.0}}
+      prompt:
+        "set as default? (Y/n): ": "Y"
+  - sh:
+      command: sdk use jbang ${{JBANG_VERSION:0.121.0}}
+
+  install-hyperfoil-catalog:
+  - script: sdk-select-jbang
+    # it should be able to automatically fetch it by running the following cmd
+  - sh: jbang catalog list hyperfoil
+
+states:
+  JBANG_VERSION: "0.121.0"
+  JAVA_VERSION: "21.0.5-tem"

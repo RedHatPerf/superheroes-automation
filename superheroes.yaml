@@ -37,9 +37,6 @@ scripts:
   - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
   - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
 
-  wait-for-images:
-  - wait-for: SUPERHEROES_IMAGES_READY
-
   ###### OPENTELEMETRY ######
   start-jaeger:
   - log: starting Jaeger...
@@ -52,7 +49,7 @@ scripts:
       -p ${{OTEL_RECEIVER_PORT}}
       ${{JAEGER_IMAGE:'docker.io/jaegertracing/all-in-one:1'}}
     then:
-    - regex: (?<HOST.JAEGER_POD_ID>[a-f0-9]{64})
+    - regex: (?<HOST.JAEGER_POD_ID>[a-f0-9]{64}$)
       else:
       - abort: failed to capture pod id for Jaeger
   - sh: ${{PODMAN}} logs -f ${{HOST.JAEGER_POD_ID}}
@@ -81,7 +78,7 @@ scripts:
       -v /tmp/otel-collector-config.yaml:/conf/otel-collector-config.yml
       ${{OTEL_IMAGE:'docker.io/otel/opentelemetry-collector:0.112.0'}} --config=/conf/otel-collector-config.yml
     then:
-    - regex: (?<HOST.OTEL_POD_ID>[a-f0-9]{64})
+    - regex: (?<HOST.OTEL_POD_ID>[a-f0-9]{64}$)
       else:
       - abort: failed to capture pod id for Opentelemetry
   - sh: ${{PODMAN}} logs -f ${{HOST.OTEL_POD_ID}}
@@ -111,7 +108,7 @@ scripts:
         -v ${{SUPERHEROES_FOLDER}}/rest-heroes/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
         ${{HEROES_DB_IMAGE:'postgres:16'}}
       then:
-      - regex: (?<HOST.HEROES_DB_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.HEROES_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Heroes database
     - sh: ${{PODMAN}} logs -f ${{HOST.HEROES_DB_POD_ID}}
@@ -146,7 +143,7 @@ scripts:
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
       then:
-      - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Heroes rest service
 
@@ -165,7 +162,7 @@ scripts:
         -v ${{SUPERHEROES_FOLDER}}/rest-villains/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
         ${{VILLAINS_DB_IMAGE:'postgres:16'}}
       then:
-      - regex: (?<HOST.VILLAINS_DB_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.VILLAINS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Villains database
     - sh: ${{PODMAN}} logs -f ${{HOST.VILLAINS_DB_POD_ID}}
@@ -202,7 +199,7 @@ scripts:
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
       then:
-      - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Villains rest service
 
@@ -224,7 +221,7 @@ scripts:
         -v ${{SUPERHEROES_FOLDER}}/grpc-locations/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql
         ${{LOCATIONS_DB_IMAGE:'docker.io/library/mariadb:11.5'}}
       then:
-      - regex: (?<HOST.LOCATIONS_DB_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.LOCATIONS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Locations database
     - sh: ${{PODMAN}} logs -f ${{HOST.LOCATIONS_DB_POD_ID}}
@@ -260,7 +257,7 @@ scripts:
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
       then:
-      - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Locations grpc service
 
@@ -281,7 +278,7 @@ scripts:
         -v ${{SUPERHEROES_FOLDER}}/rest-fights/deploy/db-init/initialize-database.js:/docker-entrypoint-initdb.d/1-init-db.js
         ${{FIGHTS_DB_IMAGE:'mongo:7.0'}}
       then:
-      - regex: (?<HOST.FIGHTS_DB_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.FIGHTS_DB_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Figths database
     - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_DB_POD_ID}}
@@ -309,7 +306,7 @@ scripts:
         -e QUARKUS_HTTP_PORT=8086
         ${{APICURIO_IMAGE:'quay.io/apicurio/apicurio-registry-mem:2.6.5.Final'}}
       then:
-      - regex: (?<HOST.APICURIO_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.APICURIO_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Apicurio registry
     - sh: ${{PODMAN}} logs -f ${{HOST.APICURIO_POD_ID}}
@@ -337,7 +334,7 @@ scripts:
         --entrypoint sh
         ${{KAFKA_IMAGE:'quay.io/strimzi/kafka:0.43.0-kafka-3.8.0'}} -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
       then:
-      - regex: (?<HOST.KAFKA_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.KAFKA_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Kafka broker
     - sh: ${{PODMAN}} logs -f ${{HOST.KAFKA_POD_ID}}
@@ -376,7 +373,7 @@ scripts:
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
       then:
-      - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64})
+      - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Fights rest service
     - sh: ${{PODMAN}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
@@ -404,12 +401,14 @@ scripts:
         ${{FIGHTS_UI_IMAGE:'quay.io/quarkus-super-heroes/ui-super-heroes:native-latest'}}
 
       then:
-      - regex: (?<HOST.FIGHTS_REST_UI_ID>[a-f0-9]{64})
+      - regex: (?<HOST.FIGHTS_REST_UI_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Fights ui
 
   cleanup-superheroes-repo:
-  - sh: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
+  - sh: 
+      command: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
+      ignore-exit-code: true
 
   cleanup-datasources:
   - script: cleanup-superheroes-repo
@@ -420,20 +419,28 @@ scripts:
   cleanup-superheroes:
   - js: ${{FIGHTS_ENABLED}}
     then:
-    - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
-    - sh: ${{PODMAN}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
+    - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
+      then:
+      - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
+      - sh: ${{PODMAN}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
   - js: ${{LOCATIONS_ENABLED}}
     then:
-    - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
-    - sh: ${{PODMAN}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
+    - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
+      then:
+      - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - sh: ${{PODMAN}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
   - js: ${{VILLAINS_ENABLED}}
     then:
-    - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
-    - sh: ${{PODMAN}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
+    - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
+      then:
+      - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
+      - sh: ${{PODMAN}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
   - js: ${{HEROES_ENABLED}}
     then:
-    - queue-download: ${{HEROES_REST_LOGS_FILE}}
-    - sh: ${{PODMAN}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
+    - read-state: ${{HOST.HEROES_REST_POD_ID}}
+      then:
+      - queue-download: ${{HEROES_REST_LOGS_FILE}}
+      - sh: ${{PODMAN}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
 
   # remove all pods
   - sh: ${{PODMAN}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}}

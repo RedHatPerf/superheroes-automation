@@ -57,7 +57,6 @@ scripts:
   - set-state: VILLAINS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}}"
   - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
   - set-state: FIGHTS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}}"
-  - signal: SUPERHEROES_IMAGES_READY
 
 
 states:

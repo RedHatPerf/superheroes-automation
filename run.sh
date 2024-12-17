@@ -7,8 +7,6 @@ CWD="$(dirname "$0")"
 BASE_BENCHMARKS_FOLDER="${CWD}/benchmarks"
 BASE_MODES_FOLDER="${CWD}/modes"
 
-QDUP_JAR=${QDUP_JAR:-"/tmp/qDup-0.8.5-uber.jar"}
-
 # Check if the correct number of arguments is provided
 if [ "$#" -lt 2 ] || [ "$#" -gt 4 ]; then
   echo "Usage: $0 <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]"

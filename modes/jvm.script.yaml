@@ -1,7 +1,6 @@
 scripts:
   prepare-images:
   - log: nothing to do as images are already available in quay.io
-  - signal: SUPERHEROES_IMAGES_READY
 
 states:
   HEROES_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-heroes:java21-latest"

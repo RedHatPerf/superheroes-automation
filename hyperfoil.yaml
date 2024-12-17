@@ -1,17 +1,4 @@
 scripts:
-  sdk-select-jbang:
-  - script: install-sdkman # requires util.yaml
-  - sh:
-      command: sdk install jbang ${{JBANG_VERSION:0.121.0}}
-      prompt:
-        "set as default? (Y/n): ": "Y"
-  - sh:
-      command: sdk use jbang ${{JBANG_VERSION:0.121.0}}
-
-  install-hyperfoil-catalog:
-  - script: sdk-select-jbang
-    # it should be able to automatically fetch it by running the following cmd
-  - sh: jbang catalog list hyperfoil
 
   upload-benchmark:
   - sh: if [ -d ${{HF_LOCAL_DIR}} ]; then rm -rf ${{HF_LOCAL_DIR}}; fi
@@ -25,11 +12,12 @@ scripts:
   - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}} -PSERVICE_HOST=${{= getHostname( '${{SUT_SERVER}}' )}}
 
   cleanup-hyperfoil:
-  - sh: rm ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
+  - sh: 
+      command: rm ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
+      ignore-exit-code: true
+
 
 states:
-  JBANG_VERSION: "0.121.0"
-
   # path to the benchmark file relative to the root of this repo, e.g. ./benchmarks/get-all-villains
   HF_BENCHMARK_PATH:
   # name of the benchmark file, e.g. get-all-villains.hf.yaml

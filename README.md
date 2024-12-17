@@ -36,9 +36,6 @@ Checkout the [installation guide](https://www.jbang.dev/documentation/guide/late
 There is a `run.sh` that aims to makes the superheroes app setup and benchmark execution easier.
 It uses qDup under the hood, therefore be sure you have properly installed it in your machine (see [prerequisites](#prerequisites) for more details).
 
-> [!NOTE]
-> The script relies on the qDup to be available and its location exported in env variable `QDUP_JAR`
-
 ### Usage
 
 ```bash
@@ -46,13 +43,13 @@ $ ./run.sh
 Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]
 ```
 
-* `<native|jvm>`:       which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml).
-* `<benchmark_folder>`: which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
-* `[local|remote]`:     where you would like to start the services, either [`local`](/envs/local.env.yaml) or [`remote`](/envs/remote.env.yaml). Default is `local`.
-* `[benchmark_params]`: any additional Hyperfoil benchmark template param you want to override, this strictly depends on the HF benchmark definition. Default is empty string.
+* `<native|jvm|<custom>>`:  which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml). Modes are extensible by creating a custom (`/modes/<custom>.script.yaml`).
+* `<benchmark_folder>`:     which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
+* `[local|remote]`:         where you would like to start the services, either [`local`](/envs/local.env.yaml) to run on `localhost` or [`remote`](/envs/remote.env.yaml). Default is `local`.  **Please note:** for `remote` environments, the current user MUST have passwordless ssh access to any remote machines defined in `/envs/remote.env.yaml`.
+* `[benchmark_params]`:     any additional Hyperfoil benchmark template param you want to override, this strictly depends on the HF benchmark definition. Default is empty string.
 
 > [!NOTE]
-> If you are willing to use `/envs/remote.env.yaml` be sure to override it in according to your servers
+> If you use `/envs/remote.env.yaml`, please ensure to override variables contained in it with your specific server hostanames
 
 ### Examples
 
@@ -83,7 +80,7 @@ Some of those qDup config files are mandatory and cannot be removed:
 - `superheroes.yaml`
 - `qdup.yaml`
 - either `envs/local.env.yaml` or `envs/remote.env.yaml`
-- either `modes/native.script.yaml` or `modes/jvm.script.yaml`
+- either `modes/native.script.yaml`, `modes/jvm.script.yaml` or any custom script you want to implement
 - one of `benchmarks/**/*.env.yaml`
 
 
@@ -122,11 +119,11 @@ The automation is generic enough to let you build the superheroes services conta
 
 ### How to build custom images?
 
-Create a new qDup file under [modes](/modes/) directory, you can take as example the [custom.build.tmpl.yaml](/modes/custom.build.tmpl.yaml) template file using the following format `ENV_IDENTIFIER.env.yaml`.
+Create a new qDup file under [modes](/modes/) directory, you can take as example the [custom.build.tmpl.yaml](/modes/custom.build.tmpl.yaml) template file using the following format `SCRIPT_IDENTIFIER.script.yaml`.
 
 And then simply call the `run.sh` with your new qDup file instead of the defaults `native`/`jvm`, e.g.,
 ```bash
-./run.sh ENV_IDENTIFIER get-all-heroes local
+./run.sh SCRIPT_IDENTIFIER get-all-heroes local
 ```
 
 > [!NOTE]
