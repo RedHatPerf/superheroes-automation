@@ -10,6 +10,11 @@ scripts:
   - queue-download: ${{HF_BENCHMARK_REF}}
   - log: running Hyperfoil benchmark..
   - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}} -PSERVICE_HOST=${{= getHostname( '${{SUT_SERVER}}' )}}
+    then:
+    - regex: 
+        pattern: Started run (?<HF_RUN_ID>.*{4})
+        autoConvert: false
+    - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
 
   cleanup-hyperfoil:
   - sh: 
