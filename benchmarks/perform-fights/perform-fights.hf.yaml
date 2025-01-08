@@ -81,9 +81,10 @@ phases:
                       {"hero": ${randomHero}, "villain": ${randomVillain}, "location": ${randomLocation}}
 
   - warmUp:
-      always:
-        users: 10
-        duration: 10s
+      increasingRate:
+        initialUsersPerSec: 1
+        targetUsersPerSec: !param USERS_PER_SEC 20
+        duration: !param WARMUP_DURATION 20s
         scenario:
           initialSequences:
             - getRandomFighters:
