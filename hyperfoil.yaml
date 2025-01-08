@@ -1,5 +1,10 @@
 scripts:
 
+  setup-hyperfoil:
+  - sh: 
+      command: if [ -f ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log ]; then rm ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log; fi
+      ignore-exit-code: true
+
   upload-benchmark:
   - sh: if [ -d ${{HF_LOCAL_DIR}} ]; then rm -rf ${{HF_LOCAL_DIR}}; fi
   - sh: mkdir -p ${{HF_LOCAL_DIR}}
@@ -9,12 +14,15 @@ scripts:
   - queue-download: ${{HF_REPORT_FILE}}
   - queue-download: ${{HF_BENCHMARK_REF}}
   - log: running Hyperfoil benchmark..
+  - signal: HF_BENCHMARK_STARTED
   - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}} -PSERVICE_HOST=${{= getHostname( '${{SUT_SERVER}}' )}}
     then:
     - regex: 
         pattern: Started run (?<HF_RUN_ID>.*{4})
         autoConvert: false
     - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
+    - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log
+  - signal: HF_BENCHMARK_TERMINATED
 
   cleanup-hyperfoil:
   - sh: 

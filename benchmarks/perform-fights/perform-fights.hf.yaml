@@ -26,9 +26,9 @@ phases:
   - performFight:
       constantRate:
         startAfter: warmUp
-        usersPerSec: !param USERS_PER_SEC 20
+        usersPerSec: !param USERS_PER_SEC 120
         maxSessions: !param MAX_SESSIONS 200
-        duration: !param DURATION 10s
+        duration: !param DURATION 3m
         scenario:
           initialSequences:
             - getRandomFighters:
@@ -83,8 +83,8 @@ phases:
   - warmUp:
       increasingRate:
         initialUsersPerSec: 1
-        targetUsersPerSec: !param USERS_PER_SEC 20
-        duration: !param WARMUP_DURATION 20s
+        targetUsersPerSec: !param USERS_PER_SEC 120
+        duration: !param WARMUP_DURATION 30s
         scenario:
           initialSequences:
             - getRandomFighters:

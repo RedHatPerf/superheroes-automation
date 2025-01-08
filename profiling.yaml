@@ -1,0 +1,35 @@
+scripts:
+  run-pidstat:
+  - js: ${{PIDSTAT_ENABLED}}
+    then:
+    - wait-for: HF_BENCHMARK_STARTED
+    - js: ${{HEROES_ENABLED}}
+      then:
+      - log: starting pidstat against ${{HOST.HEROES_REST_PID}}..
+      - sh: pidstat -p ${{HOST.HEROES_REST_PID}} 1 ${{PIDSTAT_PARAMS}} > /tmp/heroes_pidstat.log & export HEROES_PIDSTAT_PID="$!"
+      - queue-download: /tmp/heroes_pidstat.log
+    - js: ${{VILLAINS_ENABLED}}
+      then:
+      - log: starting pidstat against ${{HOST.VILLAINS_REST_PID}}..
+      - sh: pidstat -p ${{HOST.VILLAINS_REST_PID}} 1 ${{PIDSTAT_PARAMS}} > /tmp/villains_pidstat.log & export VILLAINS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/villains_pidstat.log
+    - js: ${{LOCATIONS_ENABLED}}
+      then:
+      - log: starting pidstat against ${{HOST.LOCATIONS_GRPC_PID}}..
+      - sh: pidstat -p ${{HOST.LOCATIONS_GRPC_PID}} 1 ${{PIDSTAT_PARAMS}} > /tmp/locations_pidstat.log & export LOCATIONS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/locations_pidstat.log
+    - js: ${{FIGHTS_ENABLED}}
+      then:
+      - log: starting pidstat against ${{HOST.FIGHTS_REST_PID}}..
+      - sh: pidstat -p ${{HOST.FIGHTS_REST_PID}} 1 ${{PIDSTAT_PARAMS}} > /tmp/fights_pidstat.log & export FIGHTS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/fights_pidstat.log
+    - wait-for: HF_BENCHMARK_TERMINATED
+      then:
+      - sh: kill ${HEROES_PIDSTAT_PID} || echo "pidstat already stopped"
+      - sh: kill ${VILLAINS_PIDSTAT_PID} || echo "pidstat already stopped"
+      - sh: kill ${LOCATIONS_PIDSTAT_PID} || echo "pidstat already stopped"
+      - sh: kill ${FIGHTS_PIDSTAT_PID} || echo "pidstat already stopped"
+
+states:
+  PIDSTAT_ENABLED: true
+  PIDSTAT_PARAMS:

@@ -40,11 +40,17 @@ roles:
     hosts:
       - driver
     setup-scripts:
+      - setup-hyperfoil
       - install-hyperfoil-catalog
       - upload-benchmark
     run-scripts:
       - run-benchmark
     cleanup-scripts:
       - cleanup-hyperfoil
+  profiler:
+    hosts:
+      - sut
+    run-scripts:
+      - run-pidstat
 
 states:

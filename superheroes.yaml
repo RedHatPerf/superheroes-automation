@@ -150,6 +150,9 @@ scripts:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Heroes rest service
+      - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{HOST.HEROES_REST_POD_ID}}
+        then:
+        - set-state: HOST.HEROES_REST_PID
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_REST_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
@@ -217,6 +220,9 @@ scripts:
       - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Villains rest service
+      - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{HOST.VILLAINS_REST_POD_ID}}
+        then:
+        - set-state: HOST.VILLAINS_REST_PID
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.VILLAINS_REST_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
@@ -286,6 +292,9 @@ scripts:
       - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Locations grpc service
+      - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{HOST.LOCATIONS_GRPC_POD_ID}}
+        then:
+        - set-state: HOST.LOCATIONS_GRPC_PID
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.LOCATIONS_GRPC_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
@@ -413,6 +422,9 @@ scripts:
       - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
         else:
         - abort: failed to capture pod id for Fights rest service
+      - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{HOST.FIGHTS_REST_POD_ID}}
+        then:
+        - set-state: HOST.FIGHTS_REST_PID
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
