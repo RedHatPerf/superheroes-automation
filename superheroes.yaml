@@ -135,8 +135,8 @@ scripts:
         ${{CONTAINER_RUNTIME}} run -d
         --name rest-heroes
         ${{ CONTAINER_RUNTIME_PARAMS }}
-        --memory 1G
-        --cpus 1
+        --memory ${{HEROES_REST_MEMORY}}
+        --cpus ${{HEROES_REST_CPU}}
         -p ${{HEROES_REST_PORT}}:8083
         -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
         -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
@@ -202,8 +202,8 @@ scripts:
         ${{CONTAINER_RUNTIME}} run -d
         --name rest-villains
         ${{ CONTAINER_RUNTIME_PARAMS }}
-        --memory 1G
-        --cpus 1
+        --memory ${{VILLAINS_REST_MEMORY}}
+        --cpus ${{VILLAINS_REST_CPU}}
         -p ${{VILLAINS_REST_PORT}}:8084
         -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://${{VILLAINS_DB_HOSTNAME}}:${{VILLAINS_DB_PORT}}/villains_database
         -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
@@ -271,8 +271,8 @@ scripts:
         ${{CONTAINER_RUNTIME}} run -d
         --name grpc-locations
         ${{ CONTAINER_RUNTIME_PARAMS }}
-        --memory 1G
-        --cpus 1
+        --memory ${{LOCATIONS_GRPC_MEMORY}}
+        --cpus ${{LOCATIONS_GRPC_CPU}}
         -p ${{LOCATIONS_GRPC_PORT}}:8089  
         -e QUARKUS_DATASOURCE_JDBC_URL=jdbc:mariadb://${{LOCATIONS_DB_HOSTNAME}}:${{LOCATIONS_DB_PORT}}/locations_database
         -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
@@ -396,8 +396,8 @@ scripts:
         --name rest-fights 
         ${{ CONTAINER_RUNTIME_PARAMS }}
         -p ${{FIGHTS_REST_PORT}}:8082
-        --memory 1G
-        --cpus 1
+        --memory ${{FIGHTS_REST_MEMORY}}
+        --cpus ${{FIGHTS_REST_CPU}}
         -e QUARKUS_MONGODB_HOSTS=${{FIGHTS_DB_HOSTNAME}}:${{FIGHTS_DB_PORT}}
         -e QUARKUS_LIQUIBASE_MONGODB_MIGRATE_AT_START="false"
         -e QUARKUS_MONGODB_CREDENTIALS_USERNAME=superfight 
@@ -560,6 +560,8 @@ states:
   HEROES_REST_HOSTNAME: 
   HEROES_REST_PORT: 8083
   HEROES_REST_LOGS_FILE: /tmp/heroes.logs
+  HEROES_REST_MEMORY: 1G
+  HEROES_REST_CPU: 1
 
   # Villains
   VILLAINS_ENABLED: true
@@ -572,6 +574,8 @@ states:
   VILLAINS_REST_HOSTNAME: 
   VILLAINS_REST_PORT: 8084
   VILLAINS_REST_LOGS_FILE: /tmp/villains.logs
+  VILLAINS_REST_MEMORY: 1G
+  VILLAINS_REST_CPU: 1
 
   # Locations
   LOCATIONS_ENABLED: true
@@ -584,6 +588,8 @@ states:
   LOCATIONS_GRPC_HOSTNAME: 
   LOCATIONS_GRPC_PORT: 8089
   LOCATIONS_GRPC_LOGS_FILE: /tmp/locations.logs
+  LOCATIONS_GRPC_MEMORY: 1G
+  LOCATIONS_GRPC_CPU: 1
 
   # Fights
   FIGHTS_ENABLED: true
@@ -606,6 +612,8 @@ states:
   FIGHTS_REST_HOSTNAME: 
   FIGHTS_REST_PORT: 8082
   FIGHTS_REST_LOGS_FILE: /tmp/fights.logs
+  FIGHTS_REST_MEMORY: 1G
+  FIGHTS_REST_CPU: 1
 
   UI_ENABLED: true
   FIGHTS_UI_IMAGE: "quay.io/quarkus-super-heroes/ui-super-heroes:native-latest"
