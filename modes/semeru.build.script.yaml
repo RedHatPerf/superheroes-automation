@@ -110,3 +110,8 @@ states:
 
   # required to properly extract the java process pid
   IS_ENTRYPOINT_WRAPPER: true
+
+  # let's use nightly builds until https://github.com/async-profiler/async-profiler/commit/29ee888a42faba6be581601755005be317c7fc29 gets released
+  # checkout the latest pre-release version here https://github.com/async-profiler/async-profiler/releases/tag/nightly
+  ASPROF_VERSION: 3.0-d1498a6
+  ASPROF_RELEASE_URL: https://github.com/async-profiler/async-profiler/releases/download/nightly/async-profiler-${{ASPROF_VERSION}}-linux-x64.tar.gz
