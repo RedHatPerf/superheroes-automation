@@ -88,7 +88,47 @@ scripts:
   # inspect the pid
   - sh: ps -p ${{${{STATE_PID}}}}
 
-
+  parse-pidstat-results:
+  # PIDSTAT_FILE: pidstat file to parse
+  # MAX_STATE: where to save the max result
+  # AVG_STATE: where to save the avg result
+  - sh: echo $(cat ${{PIDSTAT_FILE}} | awk '{print $9}')
+    silent: true
+    then:
+    - js: |
+        (input, state) => {
+          let cpuResults = input.split(" ").map(v => parseFloat(v)).filter(v => !Number.isNaN(v))
+          if (cpuResults.length > 0) {
+            // max cpu usage
+            state.${{MAX_STATE}} = Math.max(...cpuResults)
+            // avg cpu usage
+            state.${{AVG_STATE}} = cpuResults.reduce((all, v) => all + v, 0) / cpuResults.length
+          } else {
+            state.${{MAX_STATE}} = "NaN"
+            state.${{AVG_STATE}} = "NaN"
+          }
+        }
+  
+  parse-rss-results:
+  # RSS_FILE: rss file to parse
+  # MAX_STATE: where to save the max result
+  # AVG_STATE: where to save the avg result
+  - sh: echo $(cat ${{RSS_FILE}} | awk '{print $6}')
+    silent: true
+    then:
+    - js: |
+        (input, state) => {
+          let rssResults = input.split(" ").map(v => parseInt(v)).filter(v => !Number.isNaN(v))
+          if (rssResults.length > 0) {
+            // max cpu usage
+            state.${{MAX_STATE}} = Math.max(...rssResults)
+            // avg cpu usage
+            state.${{AVG_STATE}} = rssResults.reduce((all, v) => all + v, 0) / rssResults.length
+          } else {
+            state.${{MAX_STATE}} = "NaN"
+            state.${{AVG_STATE}} = "NaN"
+          }
+        }
 
 states:
   JBANG_VERSION: "0.121.0"

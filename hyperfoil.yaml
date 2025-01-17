@@ -27,7 +27,13 @@ scripts:
     then:
     - log: saving hyperfoil all.json as state
     - sh: cat ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
-    - set-state: HF_REPORT_ALL
+      silent: true
+      then:
+      - js: |
+          (input, state) => { 
+            let { agents, connections, sessions, ...result_stripped } = input
+            state.HF_REPORT_ALL = result_stripped
+          }
 
   cleanup-hyperfoil:
   - sh: 

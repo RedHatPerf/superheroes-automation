@@ -60,6 +60,7 @@ roles:
           with:
             PERFSTAT_SERVICE: FIGHTS
     cleanup-scripts:
+      - export-metrics
       - cleanup-profiling
 
 states:

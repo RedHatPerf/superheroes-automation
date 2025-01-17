@@ -103,6 +103,55 @@ scripts:
       then:
       - sh: kill ${MPSTAT_PID} || echo "mpstat already stopped"
   
+  # parse the metrics from the generated profiling files and set them to 
+  # qDup states so that they can easily be exported
+  # RSS at the end
+  # RSS (min, max, mean)
+  # CPU usage (min, max, mean)
+  # vmstat? mpstat?
+  export-metrics:
+  # stats for pidstat
+  - js: ${{PIDSTAT_ENABLED}}
+    then:
+    - wait-for: HF_BENCHMARK_STARTED
+    - js: ${{HEROES_ENABLED}}
+      then:
+      - script: parse-pidstat-results
+        with:
+          PIDSTAT_FILE: /tmp/HEROES_pidstat.log
+          MAX_STATE: HEROES_CPU_USAGE_MAX
+          AVG_STATE: HEROES_CPU_USAGE_AVG
+    - js: ${{VILLAINS_ENABLED}}
+      then:
+      - script: parse-pidstat-results
+        with:
+          PIDSTAT_FILE: /tmp/VILLAINS_pidstat.log
+          MAX_STATE: VILLAINS_CPU_USAGE_MAX
+          AVG_STATE: VILLAINS_CPU_USAGE_AVG
+    - js: ${{LOCATIONS_ENABLED}}
+      then:
+      - script: parse-pidstat-results
+        with:
+          PIDSTAT_FILE: /tmp/LOCATIONS_pidstat.log
+          MAX_STATE: LOCATIONS_CPU_USAGE_MAX
+          AVG_STATE: LOCATIONS_CPU_USAGE_AVG
+    - js: ${{FIGHTS_ENABLED}}
+      then:
+      - script: parse-pidstat-results
+        with:
+          PIDSTAT_FILE: /tmp/FIGHTS_pidstat.log
+          MAX_STATE: FIGHTS_CPU_USAGE_MAX
+          AVG_STATE: FIGHTS_CPU_USAGE_AVG
+  # rss
+  - js: ${{PMAP_ENABLED}} && ${{FIGHTS_ENABLED}}
+    then:
+    - script: parse-rss-results
+      with:
+        RSS_FILE: /tmp/FIGHTS_rss.log
+        MAX_STATE: FIGHTS_RSS_MAX
+        AVG_STATE: FIGHTS_RSS_AVG
+
+
   cleanup-profiling:
   - sh:
       command: rm -rf /tmp/vmstat.log /tmp/mpstat.log /tmp/*_rss.log /tmp/*_pidstat.log /tmp/*_perfstat.log
@@ -126,3 +175,7 @@ states:
 
   MPSTAT_ENABLED: true
   MPSTAT_PARAMS: "-P ALL 1"
+
+  # statistics
+  # FIGHTS_CPU_USAGE_MAX:
+  # FIGHTS_CPU_USAGE_AVG:

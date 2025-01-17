@@ -85,5 +85,5 @@ phases:
         initialUsersPerSec: 1
         targetUsersPerSec: !param USERS_PER_SEC 120
         maxSessions: !param MAX_SESSIONS 200
-        duration: !param WARMUP_DURATION 30s
+        duration: !param WARMUP_DURATION 200s
         scenario: *performFight
