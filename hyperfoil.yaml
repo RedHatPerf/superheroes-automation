@@ -23,12 +23,16 @@ scripts:
     - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
     - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log
   - signal: HF_BENCHMARK_TERMINATED
+  - js: ${{HF_REPORT_ALL_ENABLED}}
+    then:
+    - log: saving hyperfoil all.json as state
+    - sh: cat ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
+    - set-state: HF_REPORT_ALL
 
   cleanup-hyperfoil:
   - sh: 
       command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
       ignore-exit-code: true
-
 
 states:
   # path to the benchmark file relative to the root of this repo, e.g. ./benchmarks/get-all-villains
@@ -42,3 +46,7 @@ states:
 
   # additional benchmark template params you want to provide, e.g., -PDURATION=20s -P.....
   HF_BENCHMARK_PARAMS:
+  
+  # if true HF_REPORT_ALL will be populated with the actual all.json content from hyperfoil
+  HF_REPORT_ALL_ENABLED: false
+  HF_REPORT_ALL:
