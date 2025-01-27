@@ -147,8 +147,10 @@ scripts:
         -e QUARKUS_DATASOURCE_PASSWORD=superman
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
+        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -219,8 +221,10 @@ scripts:
         -e QUARKUS_DATASOURCE_PASSWORD=superbad
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
+        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -294,8 +298,10 @@ scripts:
         -e QUARKUS_DATASOURCE_PASSWORD=locations
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
+        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64}$)
         else:
@@ -425,8 +431,10 @@ scripts:
         -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
         -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
+        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -458,7 +466,6 @@ scripts:
         -e API_BASE_URL=http://${{FIGHTS_REST_HOSTNAME}}:${{FIGHTS_REST_PORT}}
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_UI_IMAGE:'quay.io/quarkus-super-heroes/ui-super-heroes:native-latest'}}
-
       then:
       - regex: (?<HOST.FIGHTS_REST_UI_ID>[a-f0-9]{64}$)
         else:
@@ -557,6 +564,8 @@ states:
   # container exec
   CONTAINER_RUNTIME: docker
   MAP_USER_GROUP: true
+  IS_NATIVE: false
+  JAVA_OPTS_APPEND: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main

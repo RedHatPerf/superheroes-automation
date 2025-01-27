@@ -60,6 +60,7 @@ scripts:
 
 
 states:
+  IS_NATIVE: true
   SUPERHEROES_BUILD_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_BUILD_COMMIT: main
   SUPERHEROES_BUILD_FOLDER: /tmp/build-quarkus-super-heroes
