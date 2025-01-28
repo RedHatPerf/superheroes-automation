@@ -16,6 +16,7 @@ http:
     host: !param SERVICE_HOST localhost
     port: !param SERVICE_PORT 8083
     sharedConnections: !param SHARED_CONNECTIONS 400
+    useHttpCache: false
 
 phases:
   - getAllHeroes:
