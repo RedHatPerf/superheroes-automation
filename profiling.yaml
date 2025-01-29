@@ -104,22 +104,35 @@ scripts:
       - sh: kill ${MPSTAT_PID} || echo "mpstat already stopped"
 
   # async profiler
+  asprof-build:
+  - sh: git clone --depth 1 ${{ASPROF_REPO}} ${{ASPROF_DIR}}
+  - sh: cd ${{ASPROF_DIR}} && git fetch --depth 1 origin ${{ASPROF_COMMIT:main}} && git checkout ${{ASPROF_COMMIT:main}}
+  - sh: make
+  - set-state: RUN.ASPROF_EXEC ${{ASPROF_DIR:/tmp/async-profiler}}/build/bin/asprof
+
+  asprof-download:
+  - sh: curl -L ${{ASPROF_RELEASE_URL}} > /tmp/async-profiler.tgz
+  - sh: tar -xvf /tmp/async-profiler.tgz -C /tmp
+  - sh: mv /tmp/async-profiler-${{ASPROF_VERSION:3.0}}-linux-x64 ${{ASPROF_DIR:/tmp/async-profiler}}
+  - set-state: RUN.ASPROF_EXEC ${{ASPROF_DIR:/tmp/async-profiler}}/bin/asprof
+  # cleanup downloaded tar
+  - sh: rm -rf /tmp/async-profiler.tgz
+
   asprof-setup:
   - js: ${{APP_PROF_ENABLED}}
     then:
     - sh: ${{SUDOER}} sh -c "echo 1 > /proc/sys/kernel/perf_event_paranoid" || echo "Unable to set perf_event_paranoid"
     - sh: ${{SUDOER}} sh -c "echo 0 > /proc/sys/kernel/kptr_restrict" || echo "Unable to unset kptr_restrict"
-    # override container runtimes to include asprof volumes
-    - set-state: CONTAINER_RUNTIME_PARAMS ${{CONTAINER_RUNTIME_PARAMS}} -v ${{ASPROF_DIR}}:${{ASPROF_DIR}}:rw,Z -v ${{ASPROF_OUT_DIR}}:${{ASPROF_OUT_DIR}}:rw,Z 
-    - sh: if [ -d ${{ASPROF_DIR}} ]; then rm -rf ${{ASPROF_DIR}}; fi
-    - sh: curl -L ${{ASPROF_RELEASE_URL}} > /tmp/async-profiler.tgz
-    - sh: tar -xvf /tmp/async-profiler.tgz -C /tmp
-    - sh: mv /tmp/async-profiler-${{ASPROF_VERSION:3.0}}-linux-x64 ${{ASPROF_DIR:/tmp/async-profiler}}
-    # cleanup downloaded tar
-    - sh: rm -rf /tmp/async-profiler.tgz
-    - set-state: RUN.ASPROF_EXEC ${{ASPROF_DIR:/tmp/async-profiler}}/bin/asprof
     - sh: if [ -d ${{ASPROF_OUT_DIR}} ]; then rm -rf ${{ASPROF_OUT_DIR}}; fi
     - sh: mkdir -p ${{ASPROF_OUT_DIR}} && chmod 777 ${{ASPROF_OUT_DIR}} || echo "Cannot create ${{ASPROF_OUT_DIR}} directory"
+    # override container runtimes to include asprof volumes
+    - set-state: HOST.CONTAINER_RUNTIME_PARAMS ${{CONTAINER_RUNTIME_PARAMS}} -v ${{ASPROF_DIR}}:${{ASPROF_DIR}}:rw,Z -v ${{ASPROF_OUT_DIR}}:${{ASPROF_OUT_DIR}}:rw,Z 
+    - sh: if [ -d ${{ASPROF_DIR}} ]; then rm -rf ${{ASPROF_DIR}}; fi
+    - js: ${{ASPROF_BUILD_FROM_SOURCE}}
+      then:
+      - script: asprof-build
+      else:
+      - script: asprof-download
   
   run-asprof:
     # Relies on existing async-profiler exectuable located at ASPROF_EXEC
@@ -220,6 +233,9 @@ states:
   MPSTAT_PARAMS: "-P ALL 1"
 
   APP_PROF_ENABLED: false
+  ASPROF_BUILD_FROM_SOURCE: false
+  ASPROF_REPO: https://github.com/async-profiler/async-profiler.git
+  ASPROF_COMMIT: master
   ASPROF_RELEASE_URL: https://github.com/async-profiler/async-profiler/releases/download/v${{ASPROF_VERSION:3.0}}/async-profiler-${{ASPROF_VERSION:3.0}}-linux-x64.tar.gz
   ASPROF_VERSION: "3.0"
   ASPROF_DIR: /tmp/async-profiler
