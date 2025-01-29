@@ -102,13 +102,21 @@ scripts:
     - wait-for: HF_BENCHMARK_TERMINATED
       then:
       - sh: kill ${MPSTAT_PID} || echo "mpstat already stopped"
+  
+  # application profiling
+  app-prof-setup:
+  - js: ${{APP_PROF_ENABLED}}
+    then:
+    - sh: ${{SUDOER}} sh -c "echo 1 > /proc/sys/kernel/perf_event_paranoid" || echo "Unable to set perf_event_paranoid"
+    - sh: ${{SUDOER}} sh -c "echo 0 > /proc/sys/kernel/kptr_restrict" || echo "Unable to unset kptr_restrict"
+    - js: ${{IS_NATIVE}}
+      else:
+      - script: asprof-setup
 
   # async profiler
   asprof-setup:
   - js: ${{APP_PROF_ENABLED}}
     then:
-    - sh: ${{SUDOER}} sh -c "echo 1 > /proc/sys/kernel/perf_event_paranoid" || echo "Unable to set perf_event_paranoid"
-    - sh: ${{SUDOER}} sh -c "echo 0 > /proc/sys/kernel/kptr_restrict" || echo "Unable to unset kptr_restrict"
     # override container runtimes to include asprof volumes
     - set-state: CONTAINER_RUNTIME_PARAMS ${{CONTAINER_RUNTIME_PARAMS}} -v ${{ASPROF_DIR}}:${{ASPROF_DIR}}:rw,Z -v ${{ASPROF_OUT_DIR}}:${{ASPROF_OUT_DIR}}:rw,Z 
     - sh: if [ -d ${{ASPROF_DIR}} ]; then rm -rf ${{ASPROF_DIR}}; fi
@@ -121,23 +129,51 @@ scripts:
     - sh: if [ -d ${{ASPROF_OUT_DIR}} ]; then rm -rf ${{ASPROF_OUT_DIR}}; fi
     - sh: mkdir -p ${{ASPROF_OUT_DIR}} && chmod 777 ${{ASPROF_OUT_DIR}} || echo "Cannot create ${{ASPROF_OUT_DIR}} directory"
   
+  run-app-prof:
+  - js: ${{APP_PROF_ENABLED}}
+    then:
+    - js: ${{IS_NATIVE}}
+      then:
+      - script: run-perfrecord
+      else:
+      - script: run-asprof
+
+  run-perfrecord:
+    # APP_PID_STATE:      the pid of the JVM process to profile
+    # APP_SERVICE:        service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  - wait-for: HF_BENCHMARK_STARTED
+  - log: Starting application level profiling for native ${{${{APP_PID_STATE}}}}...
+  - sh: 
+      command: ${{SUDOER}} ls -la /work
+      ignore-exit-code: true
+  - sh: ${{SUDOER}} perf record ${{PERFRECORD_PARAMS}} -o /tmp/${{APP_SERVICE}}_perfrecord.data -p ${{${{APP_PID_STATE}}}}
+    on-signal:
+      # stop perf when the HF load terminates
+      HF_BENCHMARK_TERMINATED:
+      - ctrlC
+  - sh: ${{SUDOER}} perf script -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-script.txt
+  # - sh: ${{SUDOER}} perf report -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-report.txt
+  - queue-download: /tmp/${{APP_SERVICE}}_perfrecord.data
+  - queue-download: /tmp/${{APP_SERVICE}}_perfrecord-script.txt
+  # - queue-download: /tmp/${{APP_SERVICE}}_perfrecord-report.txt
+  # remove the /work emulation if present
+  - sh: if [ -d /work ]; then rm -rf /work || echo "Cannot remove /work directory"; fi
+
   run-asprof:
     # Relies on existing async-profiler exectuable located at ASPROF_EXEC
     # APP_PID_STATE:      the pid of the JVM process to profile
-    # APP_SERVICE:        service to monitor with perf stat FIGHTS, HEROES, VILLAINS or LOCATIONS
-  - js: ${{APP_PROF_ENABLED}}
-    then:
-    - wait-for: HF_BENCHMARK_STARTED
-    - log: Starting application level profiling for ${{${{APP_PID_STATE}}}}...
-    - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} start -e ${{ASPROF_EVENT}} --fdtransfer ${{ASPROF_PARAMS:}} ${{${{APP_PID_STATE}}}}
-    - log: Async profiler started, waiting for HF_BENCHMARK_TERMINATED stop signal...
-    - wait-for: HF_BENCHMARK_TERMINATED
-    - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof -o ${{ASPROF_FORMAT:flamegraph}} --title '${{APP_SERVICE:service}} ${{ASPROF_EVENT}} profiling' ${{${{APP_PID_STATE}}}}
-    - log: Stopped application level profiling
-    # Rename the output file based on the provided format file extension
-    - set-state: FILE_EXTENSION ${{= ${{ASPROF_FORMATS}}['${{ASPROF_FORMAT:flamegraph}}'] }}
-    - sh: mv ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
-    - queue-download: ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
+    # APP_SERVICE:        service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  - wait-for: HF_BENCHMARK_STARTED
+  - log: Starting application level profiling for JVM ${{${{APP_PID_STATE}}}}...
+  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} start -e ${{ASPROF_EVENT}} --fdtransfer ${{ASPROF_PARAMS:}} ${{${{APP_PID_STATE}}}}
+  - log: Async profiler started, waiting for HF_BENCHMARK_TERMINATED stop signal...
+  - wait-for: HF_BENCHMARK_TERMINATED
+  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof -o ${{ASPROF_FORMAT:flamegraph}} --title '${{APP_SERVICE:service}} ${{ASPROF_EVENT}} profiling' ${{${{APP_PID_STATE}}}}
+  - log: Stopped application level profiling
+  # Rename the output file based on the provided format file extension
+  - set-state: FILE_EXTENSION ${{= ${{ASPROF_FORMATS}}['${{ASPROF_FORMAT:flamegraph}}'] }}
+  - sh: mv ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
+  - queue-download: ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
   
   # parse the metrics from the generated profiling files and set them to 
   # qDup states so that they can easily be exported
@@ -219,7 +255,9 @@ states:
   MPSTAT_ENABLED: true
   MPSTAT_PARAMS: "-P ALL 1"
 
+  # in according to the stack it will use either perf record or asprof
   APP_PROF_ENABLED: false
+
   ASPROF_RELEASE_URL: https://github.com/async-profiler/async-profiler/releases/download/v${{ASPROF_VERSION:3.0}}/async-profiler-${{ASPROF_VERSION:3.0}}-linux-x64.tar.gz
   ASPROF_VERSION: "3.0"
   ASPROF_DIR: /tmp/async-profiler
@@ -232,3 +270,5 @@ states:
       "jfr": "jfr",
       "flamegraph": "html"
     }
+
+  PERFRECORD_PARAMS: -e cpu-clock -F 100 --call-graph dwarf

@@ -51,7 +51,7 @@ roles:
     hosts:
       - sut
     setup-scripts:
-      - asprof-setup
+      - app-prof-setup
     run-scripts:
       - run-pidstat
       - run-vmstat
@@ -61,7 +61,7 @@ roles:
       - run-perfstat:
           with:
             PERFSTAT_SERVICE: FIGHTS
-      - run-asprof:
+      - run-app-prof:
           with:
             APP_PID_STATE: HOST.FIGHTS_REST_PID
             APP_SERVICE: FIGHTS

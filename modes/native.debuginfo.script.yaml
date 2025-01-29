@@ -1,0 +1,22 @@
+scripts:
+  prepare-images:
+  - log: nothing to do as images are already available in quay.io
+
+states:
+  IS_NATIVE: true
+  
+  # we are interested in fights only, so let's use just that one as rebuilt
+  HEROES_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-heroes:native-latest"
+  VILLAINS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-villains:native-latest"
+  LOCATIONS_GRPC_IMAGE: "quay.io/quarkus-super-heroes/grpc-locations:native-latest"
+  # image obtained running custom.native.build script with docker
+  FIGHTS_REST_IMAGE: "quay.io/alampare/rest-fights:native-debuginfo"
+
+  # change these values
+  CONTAINER_RUNTIME_PARAMS:
+
+  # different entrypoint
+  # HEROES_NATIVE_ENTRYPOINT: rest-heroes-1.0-runner
+  # VILLAINS_NATIVE_ENTRYPOINT: rest-villains-1.0-runner
+  # LOCATIONS_NATIVE_ENTRYPOINT: grpc-locations-1.0-runner
+  FIGHTS_NATIVE_ENTRYPOINT: rest-fights-1.0-runner

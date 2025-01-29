@@ -150,7 +150,7 @@ scripts:
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
+        ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -224,7 +224,7 @@ scripts:
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
+        ${{= ${{IS_NATIVE:false}} ? "./${{VILLAINS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -301,7 +301,7 @@ scripts:
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
+        ${{= ${{IS_NATIVE:false}} ? "./${{LOCATIONS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64}$)
         else:
@@ -434,7 +434,7 @@ scripts:
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./application ${{JAVA_OPTS_APPEND:}}" : '' }}
+        ${{= ${{IS_NATIVE:false}} ? "./${{FIGHTS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -452,6 +452,11 @@ scripts:
       timer:
         1m: # max wait time
         - abort: Fights rest service has not been ready in 1 min
+    - js: ${{IS_NATIVE}} && ${{APP_PROF_ENABLED}}
+      then:
+      # we need to copy the /work in the host (this most likely require root privileges)
+      - sh: if [ -d /work ]; then rm -rf /work; fi
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.FIGHTS_REST_POD_ID}}:/work /work
     - signal: FIGHTS_REST_READY
 
   start-fights-ui:
@@ -589,6 +594,7 @@ states:
   HEROES_DB_LOGS_FILE: /tmp/heroes_db.logs
 
   HEROES_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-heroes:native-latest"
+  HEROES_NATIVE_ENTRYPOINT: application
   HEROES_REST_HOSTNAME: 
   HEROES_REST_PORT: 8083
   HEROES_REST_LOGS_FILE: /tmp/heroes.logs
@@ -603,6 +609,7 @@ states:
   VILLAINS_DB_LOGS_FILE: /tmp/villains_db.logs
 
   VILLAINS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-villains:native-latest"
+  VILLAINS_NATIVE_ENTRYPOINT: application
   VILLAINS_REST_HOSTNAME: 
   VILLAINS_REST_PORT: 8084
   VILLAINS_REST_LOGS_FILE: /tmp/villains.logs
@@ -617,6 +624,7 @@ states:
   LOCATIONS_DB_LOGS_FILE: /tmp/locations_db.logs
 
   LOCATIONS_GRPC_IMAGE: "quay.io/quarkus-super-heroes/grpc-locations:native-latest"
+  LOCATIONS_NATIVE_ENTRYPOINT: application
   LOCATIONS_GRPC_HOSTNAME: 
   LOCATIONS_GRPC_PORT: 8089
   LOCATIONS_GRPC_LOGS_FILE: /tmp/locations.logs
@@ -641,6 +649,7 @@ states:
   KAFKA_LOGS_FILE: /tmp/kafka.logs
 
   FIGHTS_REST_IMAGE: "quay.io/quarkus-super-heroes/rest-fights:native-latest"
+  FIGHTS_NATIVE_ENTRYPOINT: application
   FIGHTS_REST_HOSTNAME: 
   FIGHTS_REST_PORT: 8082
   FIGHTS_REST_LOGS_FILE: /tmp/fights.logs

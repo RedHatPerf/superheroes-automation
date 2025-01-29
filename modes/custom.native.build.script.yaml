@@ -58,14 +58,13 @@ scripts:
   - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
   - set-state: FIGHTS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}}"
 
-
 states:
   IS_NATIVE: true
   SUPERHEROES_BUILD_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_BUILD_COMMIT: main
   SUPERHEROES_BUILD_FOLDER: /tmp/build-quarkus-super-heroes
 
-  SUPERHEROES_CUSTOM_TAG: local-main
+  SUPERHEROES_CUSTOM_TAG: native-debuginfo
 
   # change these values
   CONTAINER_RUNTIME_PARAMS:
