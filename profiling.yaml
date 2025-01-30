@@ -1,29 +1,32 @@
 scripts:
   run-pidstat:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
+  # FILE_ID: a name to identify the generated file if multiple runs
   - js: ${{PIDSTAT_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - js: ${{HEROES_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.HEROES_REST_PID}}..
-      - sh: pidstat -p ${{HOST.HEROES_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/HEROES_pidstat.log & export HEROES_PIDSTAT_PID="$!"
-      - queue-download: /tmp/HEROES_pidstat.log
+      - sh: pidstat -p ${{HOST.HEROES_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/HEROES_pidstat_${{FILE_ID:all}}.log & export HEROES_PIDSTAT_PID="$!"
+      - queue-download: /tmp/HEROES_pidstat_${{FILE_ID:all}}.log
     - js: ${{VILLAINS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.VILLAINS_REST_PID}}..
-      - sh: pidstat -p ${{HOST.VILLAINS_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/VILLAINS_pidstat.log & export VILLAINS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/VILLAINS_pidstat.log
+      - sh: pidstat -p ${{HOST.VILLAINS_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log & export VILLAINS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log
     - js: ${{LOCATIONS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.LOCATIONS_GRPC_PID}}..
-      - sh: pidstat -p ${{HOST.LOCATIONS_GRPC_PID}} ${{PIDSTAT_PARAMS}} > /tmp/LOCATIONS_pidstat.log & export LOCATIONS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/LOCATIONS_pidstat.log
+      - sh: pidstat -p ${{HOST.LOCATIONS_GRPC_PID}} ${{PIDSTAT_PARAMS}} > /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log & export LOCATIONS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log
     - js: ${{FIGHTS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.FIGHTS_REST_PID}}..
-      - sh: pidstat -p ${{HOST.FIGHTS_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/FIGHTS_pidstat.log & export FIGHTS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/FIGHTS_pidstat.log
-    - wait-for: HF_BENCHMARK_TERMINATED
+      - sh: pidstat -p ${{HOST.FIGHTS_REST_PID}} ${{PIDSTAT_PARAMS}} > /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log & export FIGHTS_PIDSTAT_PID="$!"
+      - queue-download: /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log
+    - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: kill ${HEROES_PIDSTAT_PID} || echo "pidstat already stopped"
       - sh: kill ${VILLAINS_PIDSTAT_PID} || echo "pidstat already stopped"
@@ -32,74 +35,87 @@ scripts:
   
   # measure RSS
   run-pmap:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
+  # FILE_ID: a name to identify the generated file if multiple runs
   - js: ${{PMAP_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - js: ${{FIGHTS_ENABLED}}
       then:
-      - queue-download: /tmp/FIGHTS_rss.log
-      - repeat-until: HF_BENCHMARK_TERMINATED
+      - queue-download: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
+      - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
         then:
         - sleep: 1s
-        - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/FIGHTS_rss.log
+        - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
         - sh:
             # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
             # --user "$(id -u):$(id -g)"
-            command: pmap -x ${{HOST.FIGHTS_REST_PID}} ${{PMAP_PARAMS:}} 2>/dev/null | grep total >> /tmp/FIGHTS_rss.log
+            command: pmap -x ${{HOST.FIGHTS_REST_PID}} ${{PMAP_PARAMS:}} 2>/dev/null | grep total >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
             ignore-exit-code: true
 
   run-strace:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
+  # FILE_ID: a name to identify the generated file if multiple runs
   - js: ${{STRACE_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - js: ${{FIGHTS_ENABLED}}
       then:
       - log: starting strace against ${{HOST.FIGHTS_REST_PID}}..
-      - sh: strace -p ${{HOST.FIGHTS_REST_PID}} ${{STRACE_PARAMS:}} 2> /tmp/FIGHTS_strace.log & export FIGHTS_STRACE_PID="$!"
-      - queue-download: /tmp/FIGHTS_strace.log
-    - wait-for: HF_BENCHMARK_TERMINATED
+      - sh: strace -p ${{HOST.FIGHTS_REST_PID}} ${{STRACE_PARAMS:}} 2> /tmp/FIGHTS_strace_${{FILE_ID:all}}.log & export FIGHTS_STRACE_PID="$!"
+      - queue-download: /tmp/FIGHTS_strace_${{FILE_ID:all}}.log
+    - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: kill ${FIGHTS_STRACE_PID} || echo "strace already stopped"
 
   run-perfstat:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
   # PERFSTAT_SERVICE: service to monitor with perf stat FIGHTS, HEROES, VILLAINS or LOCATIONS
+  # FILE_ID: a name to identify the generated file if multiple runs
   - js: ${{PERFSTAT_ENABLED}} && ${{${{PERFSTAT_SERVICE}}_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     # - js: ${{FIGHTS_ENABLED}}
       # then:
-    - queue-download: /tmp/${{PERFSTAT_SERVICE}}_perfstat.log
+    - queue-download: /tmp/${{PERFSTAT_SERVICE}}_perfstat_${{FILE_ID:all}}.log
     - log: starting perf stat against ${{HOST.${{PERFSTAT_SERVICE}}_REST_PID}}..
-    - sh: perf stat -d -p ${{HOST.${{PERFSTAT_SERVICE}}_REST_PID}} ${{PERFSTAT_PARAMS:}} -o /tmp/${{PERFSTAT_SERVICE}}_perfstat.log
+    - sh: perf stat -d -p ${{HOST.${{PERFSTAT_SERVICE}}_REST_PID}} ${{PERFSTAT_PARAMS:}} -o /tmp/${{PERFSTAT_SERVICE}}_perfstat_${{FILE_ID:all}}.log
       silent: true # Prevent the 'Nanny found idle' warnings
       watch:
         - regex: Problems finding threads of monitor
           then:
             - abort: Failed to start perf, unable to find provided pid ${{HOST.${{PERFSTAT_SERVICE}}_REST_PID}}
       on-signal:
-        HF_BENCHMARK_TERMINATED:
+        ${{WAIT_END:HF_BENCHMARK_TERMINATED}}:
           - log: Stopping perf
           - ctrlC
 
   run-vmstat:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
   - js: ${{VMSTAT_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - log: starting vmstat..
     - sh: vmstat ${{VMSTAT_PARAMS}} > /tmp/vmstat.log & export VMSTAT_PID="$!"
     - queue-download: /tmp/vmstat.log
-    - wait-for: HF_BENCHMARK_TERMINATED
+    - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: kill ${VMSTAT_PID} || echo "vmstat already stopped"
 
   run-mpstat:
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
   - js: ${{MPSTAT_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - log: starting mpstat..
     - sh: mpstat ${{MPSTAT_PARAMS}} > /tmp/mpstat.log & export MPSTAT_PID="$!"
     - queue-download: /tmp/mpstat.log
-    - wait-for: HF_BENCHMARK_TERMINATED
+    - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: kill ${MPSTAT_PID} || echo "mpstat already stopped"
   
@@ -139,9 +155,12 @@ scripts:
       - script: run-asprof
 
   run-perfrecord:
-    # APP_PID_STATE:      the pid of the JVM process to profile
-    # APP_SERVICE:        service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
-  - wait-for: HF_BENCHMARK_STARTED
+  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_END: which signal should it wait before stopping
+  # APP_PID_STATE: the pid of the JVM process to profile
+  # APP_SERVICE: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  # FILE_ID: a name to identify the generated file if multiple runs
+  - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
   - log: Starting application level profiling for native ${{${{APP_PID_STATE}}}}...
   - sh: 
       command: ${{SUDOER}} ls -la /work
@@ -149,7 +168,7 @@ scripts:
   - sh: ${{SUDOER}} perf record ${{PERFRECORD_PARAMS}} -o /tmp/${{APP_SERVICE}}_perfrecord.data -p ${{${{APP_PID_STATE}}}}
     on-signal:
       # stop perf when the HF load terminates
-      HF_BENCHMARK_TERMINATED:
+      ${{WAIT_END:HF_BENCHMARK_TERMINATED}}:
       - ctrlC
   - sh: ${{SUDOER}} perf script -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-script.txt
   # - sh: ${{SUDOER}} perf report -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-report.txt
@@ -160,20 +179,21 @@ scripts:
   - sh: if [ -d /work ]; then rm -rf /work || echo "Cannot remove /work directory"; fi
 
   run-asprof:
-    # Relies on existing async-profiler exectuable located at ASPROF_EXEC
-    # APP_PID_STATE:      the pid of the JVM process to profile
-    # APP_SERVICE:        service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
-  - wait-for: HF_BENCHMARK_STARTED
+  # Relies on existing async-profiler exectuable located at ASPROF_EXEC
+  # APP_PID_STATE: the pid of the JVM process to profile
+  # APP_SERVICE: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  # FILE_ID: a name to identify the generated file if multiple runs
+  - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
   - log: Starting application level profiling for JVM ${{${{APP_PID_STATE}}}}...
   - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} start -e ${{ASPROF_EVENT}} --fdtransfer ${{ASPROF_PARAMS:}} ${{${{APP_PID_STATE}}}}
-  - log: Async profiler started, waiting for HF_BENCHMARK_TERMINATED stop signal...
-  - wait-for: HF_BENCHMARK_TERMINATED
-  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof -o ${{ASPROF_FORMAT:flamegraph}} --title '${{APP_SERVICE:service}} ${{ASPROF_EVENT}} profiling' ${{${{APP_PID_STATE}}}}
+  - log: Async profiler started, waiting for ${{WAIT_END:HF_BENCHMARK_TERMINATED}} stop signal...
+  - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
+  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}} -o ${{ASPROF_FORMAT:flamegraph}} --title '${{APP_SERVICE:service}} ${{ASPROF_EVENT}} profiling' ${{${{APP_PID_STATE}}}}
   - log: Stopped application level profiling
   # Rename the output file based on the provided format file extension
   - set-state: FILE_EXTENSION ${{= ${{ASPROF_FORMATS}}['${{ASPROF_FORMAT:flamegraph}}'] }}
-  - sh: mv ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
-  - queue-download: ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof.${{FILE_EXTENSION}}
+  - sh: mv ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}} ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
+  - queue-download: ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
   
   # parse the metrics from the generated profiling files and set them to 
   # qDup states so that they can easily be exported
@@ -185,47 +205,47 @@ scripts:
   # stats for pidstat
   - js: ${{PIDSTAT_ENABLED}}
     then:
-    - wait-for: HF_BENCHMARK_STARTED
+    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - js: ${{HEROES_ENABLED}}
       then:
       - script: parse-pidstat-results
         with:
-          PIDSTAT_FILE: /tmp/HEROES_pidstat.log
-          MAX_STATE: HEROES_CPU_USAGE_MAX
-          AVG_STATE: HEROES_CPU_USAGE_AVG
+          PIDSTAT_FILE: /tmp/HEROES_pidstat_${{FILE_ID:all}}.log
+          MAX_STATE: ${{FILE_ID:all}}_HEROES_CPU_USAGE_MAX
+          AVG_STATE: ${{FILE_ID:all}}_HEROES_CPU_USAGE_AVG
     - js: ${{VILLAINS_ENABLED}}
       then:
       - script: parse-pidstat-results
         with:
-          PIDSTAT_FILE: /tmp/VILLAINS_pidstat.log
-          MAX_STATE: VILLAINS_CPU_USAGE_MAX
-          AVG_STATE: VILLAINS_CPU_USAGE_AVG
+          PIDSTAT_FILE: /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log
+          MAX_STATE: ${{FILE_ID:all}}_VILLAINS_CPU_USAGE_MAX
+          AVG_STATE: ${{FILE_ID:all}}_VILLAINS_CPU_USAGE_AVG
     - js: ${{LOCATIONS_ENABLED}}
       then:
       - script: parse-pidstat-results
         with:
-          PIDSTAT_FILE: /tmp/LOCATIONS_pidstat.log
-          MAX_STATE: LOCATIONS_CPU_USAGE_MAX
-          AVG_STATE: LOCATIONS_CPU_USAGE_AVG
+          PIDSTAT_FILE: /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log
+          MAX_STATE: ${{FILE_ID:all}}_LOCATIONS_CPU_USAGE_MAX
+          AVG_STATE: ${{FILE_ID:all}}_LOCATIONS_CPU_USAGE_AVG
     - js: ${{FIGHTS_ENABLED}}
       then:
       - script: parse-pidstat-results
         with:
-          PIDSTAT_FILE: /tmp/FIGHTS_pidstat.log
-          MAX_STATE: FIGHTS_CPU_USAGE_MAX
-          AVG_STATE: FIGHTS_CPU_USAGE_AVG
+          PIDSTAT_FILE: /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log
+          MAX_STATE: ${{FILE_ID:all}}_FIGHTS_CPU_USAGE_MAX
+          AVG_STATE: ${{FILE_ID:all}}_FIGHTS_CPU_USAGE_AVG
   # rss
   - js: ${{PMAP_ENABLED}} && ${{FIGHTS_ENABLED}}
     then:
     - script: parse-rss-results
       with:
-        RSS_FILE: /tmp/FIGHTS_rss.log
-        MAX_STATE: FIGHTS_RSS_MAX
-        AVG_STATE: FIGHTS_RSS_AVG
+        RSS_FILE: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
+        MAX_STATE: ${{FILE_ID:all}}_FIGHTS_RSS_MAX
+        AVG_STATE: ${{FILE_ID:all}}_FIGHTS_RSS_AVG
 
   cleanup-profiling:
   - sh:
-      command: rm -rf /tmp/vmstat.log /tmp/mpstat.log /tmp/*_rss.log /tmp/*_pidstat.log /tmp/*_perfstat.log 
+      command: rm -rf /tmp/vmstat.log /tmp/mpstat.log /tmp/*_rss*.log /tmp/*_pidstat*.log /tmp/*_perfstat_${{FILE_ID:all}}.log 
       ignore-exit-code: true
   - sh: 
       command: if [ -d ${{ASPROF_DIR}} ]; then rm -rf ${{ASPROF_DIR}}; fi

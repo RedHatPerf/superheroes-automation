@@ -45,6 +45,7 @@ roles:
       - upload-benchmark
     run-scripts:
       - run-benchmark
+      - monitor-steady-phase
     cleanup-scripts:
       - cleanup-hyperfoil
   profiler:
@@ -53,20 +54,53 @@ roles:
     setup-scripts:
       - app-prof-setup
     run-scripts:
-      - run-pidstat
-      - run-vmstat
-      - run-mpstat
-      - run-pmap
-      - run-strace
+      - run-pidstat:
+          with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
+      - run-pidstat:
+          with:
+            WAIT_FOR: HF_STEADY_PHASE_STARTED
+            WAIT_END: HF_STEADY_PHASE_TERMINATED
+            FILE_ID: steady
+      - run-vmstat:
+          with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
+      - run-mpstat:
+          with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
+      - run-pmap:
+          with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
+      - run-pmap:
+          with:
+            WAIT_FOR: HF_STEADY_PHASE_STARTED
+            WAIT_END: HF_STEADY_PHASE_TERMINATED
+            FILE_ID: steady
+      - run-strace:
+          with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
       - run-perfstat:
           with:
+            WAIT_FOR: HF_BENCHMARK_STARTED
+            WAIT_END: HF_BENCHMARK_TERMINATED
             PERFSTAT_SERVICE: FIGHTS
       - run-app-prof:
           with:
+            WAIT_FOR: HF_STEADY_PHASE_STARTED
+            WAIT_END: HF_STEADY_PHASE_TERMINATED
             APP_PID_STATE: HOST.FIGHTS_REST_PID
             APP_SERVICE: FIGHTS
+            FILE_ID: steady
     cleanup-scripts:
       - export-metrics
+      - export-metrics:
+          with:
+            FILE_ID: steady
       - cleanup-profiling
 
 states:

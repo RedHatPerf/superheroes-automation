@@ -14,12 +14,14 @@ scripts:
   - queue-download: ${{HF_REPORT_FILE}}
   - queue-download: ${{HF_BENCHMARK_REF}}
   - log: running Hyperfoil benchmark..
-  - signal: HF_BENCHMARK_STARTED
   - sh: jbang run@hyperfoil -o ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}} ${{HF_BENCHMARK_PARAMS:}} -PSERVICE_HOST=${{= getHostname( '${{SUT_SERVER}}' )}}
-    then:
+    watch:
     - regex: 
         pattern: Started run (?<HF_RUN_ID>.*{4})
-        autoConvert: false
+        autoConvert: false 
+      then:
+      - signal: HF_BENCHMARK_STARTED
+    then:
     - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{HF_RUN_ID}}/all.json
     - queue-download: ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log
   - signal: HF_BENCHMARK_TERMINATED
@@ -35,6 +37,21 @@ scripts:
             state.HF_REPORT_ALL = result_stripped
           }
 
+  monitor-steady-phase:
+  # this script aims to monitor the hyperfoil.local.log to signal when the steady phase is started
+  - wait-for: HF_BENCHMARK_STARTED
+  - sh: tail -f ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log
+    watch:
+    - regex: ${{HF_STEADY_PHASE_NAME}} changing status NOT_STARTED to STARTING
+      then:
+      - signal: HF_STEADY_PHASE_STARTED
+    - regex: ${{HF_STEADY_PHASE_NAME}} changing status FINISHING to FINISHED
+      then:
+      - signal: HF_STEADY_PHASE_TERMINATED
+    - regex: Successfully persisted
+      then: 
+      - ctrlC
+
   cleanup-hyperfoil:
   - sh: 
       command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
@@ -47,6 +64,7 @@ states:
   HF_BENCHMARK_FILE:
   # path to the report generated file, e.g., /tmp/report.html
   HF_REPORT_FILE:
+  HF_RUN_ID:
   HF_LOCAL_DIR: /tmp/hf-benchmarks
   HF_BENCHMARK_REF: ${{HF_LOCAL_DIR}}/${{HF_BENCHMARK_FILE}}
 
@@ -56,3 +74,6 @@ states:
   # if true HF_REPORT_ALL will be populated with the actual all.json content from hyperfoil
   HF_REPORT_ALL_ENABLED: false
   HF_REPORT_ALL:
+
+  # name of the steady phase in hyperfoil
+  HF_STEADY_PHASE_NAME: performFight
