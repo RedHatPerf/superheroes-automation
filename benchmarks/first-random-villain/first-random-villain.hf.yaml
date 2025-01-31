@@ -1,0 +1,26 @@
+# This Hyperfoil benchmark runs a GET to the /api/heroes/random endpoint
+# Here is a list of all the parameters and their default values that can be adjusted when running:
+#
+# SERVICE_PROTOCOL=http (The protocol used by the benchmark)
+# SERVICE_HOST=localhost (The host the rest-heroes application is running on)
+# SERVICE_PORT=8083 (The port the rest-heroes application is running on)
+# SHARED_CONNECTIONS=1 (The number of connections to share across the requests)
+
+name: first-random-villain
+http:
+  - protocol: !param SERVICE_PROTOCOL http
+    host: !param SERVICE_HOST localhost
+    port: !param SERVICE_PORT 8084
+    sharedConnections: !param SHARED_CONNECTIONS 1
+    useHttpCache: false
+
+phases:
+  - randomVillain:
+      atOnce:
+        users: !param USERS 1
+        scenario:
+          - getRandomVillain:
+              - httpRequest:
+                  GET: /api/villains/random
+                  headers:
+                    accept: application/json

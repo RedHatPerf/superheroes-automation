@@ -93,8 +93,6 @@ roles:
           with:
             WAIT_FOR: HF_STEADY_PHASE_STARTED
             WAIT_END: HF_STEADY_PHASE_TERMINATED
-            APP_PID_STATE: HOST.FIGHTS_REST_PID
-            APP_SERVICE: FIGHTS
             FILE_ID: steady
     cleanup-scripts:
       - export-metrics

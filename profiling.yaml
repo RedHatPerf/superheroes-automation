@@ -37,22 +37,22 @@ scripts:
   run-pmap:
   # WAIT_FOR: which signal should it wait before starting 
   # WAIT_END: which signal should it wait before stopping
+  # MAIN_SERVICE_PID_STATE: the pid of the JVM process to profile
+  # MAIN_SERVICE_ID: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
   # FILE_ID: a name to identify the generated file if multiple runs
   - js: ${{PMAP_ENABLED}}
     then:
     - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
-    - js: ${{FIGHTS_ENABLED}}
+    - queue-download: /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+    - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
-      - queue-download: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-      - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
-        then:
-        - sleep: 1s
-        - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-        - sh:
-            # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
-            # --user "$(id -u):$(id -g)"
-            command: pmap -x ${{HOST.FIGHTS_REST_PID}} ${{PMAP_PARAMS:}} 2>/dev/null | grep total >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-            ignore-exit-code: true
+      - sleep: 1s
+      - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+      - sh:
+          # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
+          # --user "$(id -u):$(id -g)"
+          command: pmap -x ${{${{MAIN_SERVICE_PID_STATE}}}} ${{PMAP_PARAMS:}} 2>/dev/null | grep total >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+          ignore-exit-code: true
 
   run-strace:
   # WAIT_FOR: which signal should it wait before starting 
@@ -157,43 +157,43 @@ scripts:
   run-perfrecord:
   # WAIT_FOR: which signal should it wait before starting 
   # WAIT_END: which signal should it wait before stopping
-  # APP_PID_STATE: the pid of the JVM process to profile
-  # APP_SERVICE: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  # MAIN_SERVICE_PID_STATE: the pid of the JVM process to profile
+  # MAIN_SERVICE_ID: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
   # FILE_ID: a name to identify the generated file if multiple runs
   - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
-  - log: Starting application level profiling for native ${{${{APP_PID_STATE}}}}...
+  - log: Starting application level profiling for native ${{${{MAIN_SERVICE_PID_STATE}}}}...
   - sh: 
       command: ${{SUDOER}} ls -la /work
       ignore-exit-code: true
-  - sh: ${{SUDOER}} perf record ${{PERFRECORD_PARAMS}} -o /tmp/${{APP_SERVICE}}_perfrecord.data -p ${{${{APP_PID_STATE}}}}
+  - sh: ${{SUDOER}} perf record ${{PERFRECORD_PARAMS}} -o /tmp/${{MAIN_SERVICE_ID}}_perfrecord.data -p ${{${{MAIN_SERVICE_PID_STATE}}}}
     on-signal:
       # stop perf when the HF load terminates
       ${{WAIT_END:HF_BENCHMARK_TERMINATED}}:
       - ctrlC
-  - sh: ${{SUDOER}} perf script -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-script.txt
-  # - sh: ${{SUDOER}} perf report -i /tmp/${{APP_SERVICE}}_perfrecord.data >> /tmp/${{APP_SERVICE}}_perfrecord-report.txt
-  - queue-download: /tmp/${{APP_SERVICE}}_perfrecord.data
-  - queue-download: /tmp/${{APP_SERVICE}}_perfrecord-script.txt
-  # - queue-download: /tmp/${{APP_SERVICE}}_perfrecord-report.txt
+  - sh: ${{SUDOER}} perf script -i /tmp/${{MAIN_SERVICE_ID}}_perfrecord.data >> /tmp/${{MAIN_SERVICE_ID}}_perfrecord-script.txt
+  # - sh: ${{SUDOER}} perf report -i /tmp/${{MAIN_SERVICE_ID}}_perfrecord.data >> /tmp/${{MAIN_SERVICE_ID}}_perfrecord-report.txt
+  - queue-download: /tmp/${{MAIN_SERVICE_ID}}_perfrecord.data
+  - queue-download: /tmp/${{MAIN_SERVICE_ID}}_perfrecord-script.txt
+  # - queue-download: /tmp/${{MAIN_SERVICE_ID}}_perfrecord-report.txt
   # remove the /work emulation if present
   - sh: if [ -d /work ]; then rm -rf /work || echo "Cannot remove /work directory"; fi
 
   run-asprof:
   # Relies on existing async-profiler exectuable located at ASPROF_EXEC
-  # APP_PID_STATE: the pid of the JVM process to profile
-  # APP_SERVICE: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
+  # MAIN_SERVICE_PID_STATE: the pid of the JVM process to profile
+  # MAIN_SERVICE_ID: service to monitor FIGHTS, HEROES, VILLAINS or LOCATIONS
   # FILE_ID: a name to identify the generated file if multiple runs
   - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
-  - log: Starting application level profiling for JVM ${{${{APP_PID_STATE}}}}...
-  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} start -e ${{ASPROF_EVENT}} --fdtransfer ${{ASPROF_PARAMS:}} ${{${{APP_PID_STATE}}}}
+  - log: Starting application level profiling for JVM ${{${{MAIN_SERVICE_PID_STATE}}}}...
+  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} start -e ${{ASPROF_EVENT}} --fdtransfer ${{ASPROF_PARAMS:}} ${{${{MAIN_SERVICE_PID_STATE}}}}
   - log: Async profiler started, waiting for ${{WAIT_END:HF_BENCHMARK_TERMINATED}} stop signal...
   - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
-  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}} -o ${{ASPROF_FORMAT:flamegraph}} --title '${{APP_SERVICE:service}} ${{ASPROF_EVENT}} profiling' ${{${{APP_PID_STATE}}}}
+  - sh: ${{SUDOER}} ${{ASPROF_EXEC:/tmp/async-profiler/bin/asprof}} stop -f ${{ASPROF_OUT_DIR}}/${{MAIN_SERVICE_ID:service}}_asprof_${{FILE_ID:all}} -o ${{ASPROF_FORMAT:flamegraph}} --title '${{MAIN_SERVICE_ID:service}} ${{ASPROF_EVENT}} profiling' ${{${{MAIN_SERVICE_PID_STATE}}}}
   - log: Stopped application level profiling
   # Rename the output file based on the provided format file extension
   - set-state: FILE_EXTENSION ${{= ${{ASPROF_FORMATS}}['${{ASPROF_FORMAT:flamegraph}}'] }}
-  - sh: mv ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}} ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
-  - queue-download: ${{ASPROF_OUT_DIR}}/${{APP_SERVICE:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
+  - sh: mv ${{ASPROF_OUT_DIR}}/${{MAIN_SERVICE_ID:service}}_asprof_${{FILE_ID:all}} ${{ASPROF_OUT_DIR}}/${{MAIN_SERVICE_ID:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
+  - queue-download: ${{ASPROF_OUT_DIR}}/${{MAIN_SERVICE_ID:service}}_asprof_${{FILE_ID:all}}.${{FILE_EXTENSION}}
   
   # parse the metrics from the generated profiling files and set them to 
   # qDup states so that they can easily be exported
@@ -235,13 +235,13 @@ scripts:
           MAX_STATE: ${{FILE_ID:all}}_FIGHTS_CPU_USAGE_MAX
           AVG_STATE: ${{FILE_ID:all}}_FIGHTS_CPU_USAGE_AVG
   # rss
-  - js: ${{PMAP_ENABLED}} && ${{FIGHTS_ENABLED}}
+  - js: ${{PMAP_ENABLED}}
     then:
     - script: parse-rss-results
       with:
-        RSS_FILE: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-        MAX_STATE: ${{FILE_ID:all}}_FIGHTS_RSS_MAX
-        AVG_STATE: ${{FILE_ID:all}}_FIGHTS_RSS_AVG
+        RSS_FILE: /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+        MAX_STATE: ${{FILE_ID:all}}_${{MAIN_SERVICE_ID}}_RSS_MAX
+        AVG_STATE: ${{FILE_ID:all}}_${{MAIN_SERVICE_ID}}_RSS_AVG
 
   cleanup-profiling:
   - sh:

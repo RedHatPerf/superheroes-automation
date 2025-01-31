@@ -1,0 +1,70 @@
+# This Hyperfoil benchmark performs a "Perform fight" operation, which runs a sequence of requests in each iteration:
+# 1) Perform a GET to /api/fights/randomfighters to retrieve random fighters, storing the result in a variable (done in parallel with 2)
+# 2) Perform a GET to /api/fights/randomlocation to retrieve a random location, storing the result in a variable (done in parallel with 1)
+# 3) Pause to look at the fighters & location (as a human user might)
+# 4) Perform a POST to /api/fights to perform the fight, sending the result from steps 1 and 2 as the request body
+
+# Here is a list of all the parameters and their default values that can be adjusted when running:
+#
+# SERVICE_PROTOCOL=http (The protocol used by the benchmark)
+# SERVICE_HOST=localhost (The host the rest-fights application is running on)
+# SERVICE_PORT=8082 (The port the rest-fights application is running on)
+# SHARED_CONNECTIONS=3 (The number of connections to share across the requests)
+# USERS=1 (The number of concurrent users)
+
+name: first-fight
+http:
+  - protocol: !param SERVICE_PROTOCOL http
+    host: !param SERVICE_HOST localhost
+    port: !param SERVICE_PORT 8082
+    sharedConnections: !param SHARED_CONNECTIONS 3
+    useHttpCache: false
+
+phases:
+  - performFight:
+      atOnce:
+        users: !param USERS 1
+        scenario:
+          initialSequences:
+            - getRandomFighters:
+                - httpRequest:
+                    GET: /api/fights/randomfighters
+                    headers:
+                      accept: application/json
+                    handler:
+                      body:
+                        store:
+                          toVar: randomFighters
+                          format: BYTES
+                - json:
+                    fromVar: randomFighters
+                    format: STRING
+                    query: .hero
+                    toVar: randomHero
+                - json:
+                    fromVar: randomFighters
+                    format: STRING
+                    query: .villain
+                    toVar: randomVillain
+
+            - getRandomLocation:
+                - httpRequest:
+                    GET: /api/fights/randomlocation
+                    headers:
+                      accept: application/json
+                    handler:
+                      body:
+                        store:
+                          toVar: randomLocation
+
+            - doFight:
+                - awaitVar: randomHero
+                - awaitVar: randomVillain
+                - awaitVar: randomLocation
+                - httpRequest:
+                    POST: /api/fights
+                    headers:
+                      content-type: application/json
+                      accept: application/json
+                    body: >-
+                      {"hero": ${randomHero}, "villain": ${randomVillain}, "location": ${randomLocation}}
