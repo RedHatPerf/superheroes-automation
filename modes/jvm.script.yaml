@@ -1,6 +1,7 @@
 scripts:
   prepare-images:
   - log: nothing to do as images are already available in quay.io
+  - signal: SUPERHEROES_IMAGES_BUILD_COMPLETED
 
 states:
   MAP_USER_GROUP: false

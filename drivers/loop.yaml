@@ -1,0 +1,36 @@
+scripts:
+
+  # [start] Interface
+
+  setup-driver:
+  # this is required to get the first response metrics
+  # keep calling the endpoint until 200 request is returned
+  # track the response timestamp
+  - sh: 
+      command: if [ -f /tmp/first_response.txt ]; then rm -f /tmp/first_response.txt; fi
+      ignore-exit-code: true
+  - wait-for: SUPERHEROES_IMAGES_BUILD_COMPLETED
+  - signal: HF_BENCHMARK_STARTED
+  - sh: |
+      while [[ $(curl -s -o /dev/null -w ''%{http_code}'' ${{= getHostname( '${{SUT_SERVER}}' )}}:${{LOOP_ENDPOINT}}) != 200 ]] 
+      do
+        sleep 0.001
+      done
+      date +"%Y-%m-%d %H:%M:%S.%N" > /tmp/first_response.txt
+  - sh: echo $(($(date "+%s%N" -d "$(head -1 /tmp/first_response.txt)")/1000000))
+    then:
+    - set-state: RUN.LOOP_SERVICE_FIRST_RESP_TIMESTAMP
+
+  run-benchmark:
+  # trick to ensure the profiling is captured
+  - sleep: 5s
+  - signal: HF_BENCHMARK_TERMINATED
+
+  cleanup-driver:
+  - log: nothing to do
+  
+  # [end] Interface
+
+states:
+  # the api endpoint to keep calling
+  LOOP_ENDPOINT:

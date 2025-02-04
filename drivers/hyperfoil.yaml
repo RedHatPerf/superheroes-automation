@@ -1,5 +1,25 @@
 scripts:
 
+  # [start] Interface
+
+  setup-driver:
+  - script: setup-hyperfoil
+  - script: install-hyperfoil-catalog
+  - script: upload-benchmark
+
+  run-benchmark:
+  - script: 
+      name: run-hf-benchmark
+      async: true
+  - script: monitor-steady-phase
+
+  cleanup-driver:
+  - sh: 
+      command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
+      ignore-exit-code: true
+  
+  # [end] Interface
+
   setup-hyperfoil:
   - sh: 
       command: if [ -f ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log ]; then rm -f ${{HF_TMP_DIR:/tmp/hyperfoil}}/hyperfoil.local.log; fi
@@ -8,9 +28,9 @@ scripts:
   upload-benchmark:
   - sh: if [ -d ${{HF_LOCAL_DIR}} ]; then rm -rf ${{HF_LOCAL_DIR}}; fi
   - sh: mkdir -p ${{HF_LOCAL_DIR}}
-  - upload: ${{ENV.SCRIPT_DIR}}/${{HF_BENCHMARK_PATH}}/${{HF_BENCHMARK_FILE}} ${{HF_LOCAL_DIR}}/
+  - upload: ${{ENV.SCRIPT_DIR}}/../${{HF_BENCHMARK_PATH}}/${{HF_BENCHMARK_FILE}} ${{HF_LOCAL_DIR}}/
 
-  run-benchmark:
+  run-hf-benchmark:
   - queue-download: ${{HF_REPORT_FILE}}
   - queue-download: ${{HF_BENCHMARK_REF}}
   - log: running Hyperfoil benchmark..
@@ -51,11 +71,6 @@ scripts:
     - regex: Successfully persisted
       then: 
       - ctrlC
-
-  cleanup-hyperfoil:
-  - sh: 
-      command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
-      ignore-exit-code: true
 
 states:
   # path to the benchmark file relative to the root of this repo, e.g. ./benchmarks/get-all-villains

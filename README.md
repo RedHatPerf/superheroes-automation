@@ -113,6 +113,21 @@ benchmarks/get-all-heroes
 * `$BENCHMARK_NAME.env.yaml`: contains required qdup states/params to properly retrieve the benchmark definition
 * `$BENCHMARK_NAME.hf.yaml`: contains the Hyperfoil benchmark definition
 
+## Custom drivers
+
+The automation is generic enough to let you setup your preferred load driver, by default we are providing the Hyperfoil one.
+
+### How to setup a custom driver?
+
+You can simply create your own qDup script under [`/drivers`](./drivers/) folder.
+There are just a couple of things to be aware:
+1. You need to implement the expected scripts (`setup-driver`, `run-benchmark`, `cleanup-driver`), see [driver template](./drivers/driver.tmpl.yaml) as base example.
+2. If you want to have the profiling working you should ensure you driver raise the following signals:
+   * `HF_BENCHMARK_STARTED`: when the profiling can be started
+   * `HF_BENCHMARK_TERMINATED`: when the profiling can be stopped
+   * `HF_STEADY_PHASE_STARTED`: (optional) when an additional profiling can be started
+   * `HF_STEADY_PHASE_TERMINATED`: (optional) when an additional profiling can be stopped
+
 ## Custom builds
 
 The automation is generic enough to let you build the superheroes services container images and run them instead of the currently available ones.

@@ -6,10 +6,11 @@
 CWD="$(dirname "$0")"
 BASE_BENCHMARKS_FOLDER="${CWD}/benchmarks"
 BASE_MODES_FOLDER="${CWD}/modes"
+BASE_DRIVERS_FOLDER="${CWD}/drivers"
 
 # Check if the correct number of arguments is provided
-if [ "$#" -lt 2 ] || [ "$#" -gt 4 ]; then
-  echo "Usage: $0 <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]"
+if [ "$#" -lt 2 ] || [ "$#" -gt 5 ]; then
+  echo "Usage: $0 <native|jvm> <benchmark_folder> [driver] [local|remote] [benchmark_params]"
   exit 1
 fi
 
@@ -31,9 +32,23 @@ if [ ! -d "$BASE_BENCHMARKS_FOLDER/$BENCHMARK_FOLDER" ]; then
   exit 1
 fi
 
-# Validate
+# Validate driver
 if [ "$#" -ge 3 ]; then
-  LOCATION="$3"
+  DRIVER="$3"
+  if [ ! -f "$BASE_DRIVERS_FOLDER/$DRIVER.yaml" ]; then
+    echo "Error: Driver script file '$DRIVER.yaml' does not exist in $BASE_DRIVERS_FOLDER."
+    echo "Available drivers are:"
+    ls -1 $BASE_DRIVERS_FOLDER/*.yaml
+    exit 1
+  fi
+else
+  # default is 'local' 
+  DRIVER="hyperfoil"
+fi
+
+# Validate server setup
+if [ "$#" -ge 4 ]; then
+  LOCATION="$4"
   if [[ "$LOCATION" != "local" && "$LOCATION" != "remote" ]]; then
     echo "Error: Server location, if provided, must be either 'local' or 'remote'."
     exit 1
@@ -44,8 +59,8 @@ else
 fi
 
 # handle additional HF benchmark params
-if [ "$#" -eq 4 ]; then
-  ADDITIONAL_ARGS="$4"
+if [ "$#" -eq 5 ]; then
+  ADDITIONAL_ARGS="$5"
 else
   ADDITIONAL_ARGS=""
 fi
@@ -53,10 +68,11 @@ fi
 echo Running benchmark with the following configuration:
 echo "  > Mode:             $MODE"
 echo "  > Benchmark:        $BENCHMARK_FOLDER"
+echo "  > Driver:           $DRIVER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="jbang qDup@hyperfoil ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml hyperfoil.yaml superheroes.yaml util.yaml qdup.yaml $ADDITIONAL_ARGS"
+QDUP_CMD="jbang qDup@hyperfoil ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml $ADDITIONAL_ARGS"
 
 echo Executing: "$QDUP_CMD"
 
