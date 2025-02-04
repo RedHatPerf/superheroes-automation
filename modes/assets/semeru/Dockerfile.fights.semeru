@@ -69,6 +69,8 @@ EXPOSE 8083
 ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
+RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
+
 # Create checkpoint
 RUN ./start-quarkus.sh http://localhost:8082/api/fights
 
