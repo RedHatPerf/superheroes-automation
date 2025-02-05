@@ -59,6 +59,8 @@ COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
 RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
 
+USER 185
+
 EXPOSE 8083
 
 ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"

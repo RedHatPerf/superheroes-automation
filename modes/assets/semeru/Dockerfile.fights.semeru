@@ -71,6 +71,8 @@ ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
 RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
 
+USER 185
+
 # Create checkpoint
 RUN ./start-quarkus.sh http://localhost:8082/api/fights
 

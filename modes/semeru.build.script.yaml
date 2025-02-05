@@ -97,6 +97,8 @@ scripts:
 
 
 states:
+  MAP_USER_GROUP: false
+
   SUPERHEROES_BUILD_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_BUILD_COMMIT: main
   SUPERHEROES_BUILD_FOLDER: /tmp/build-quarkus-super-heroes
