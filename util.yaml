@@ -76,15 +76,16 @@ scripts:
     - repeat-until: stop
       then:
       - sh: ps --ppid ${{${{STATE_PID}}}} -o pid= | awk '{print $1}'
-      - regex: (^[1-9][0-9]*$)
         then:
-        - set-state: ${{STATE_PID}}
-        - sh: ps --pid ${{${{STATE_PID}}}} -o cmd=
-        - regex: java
+        - for-each: pid
           then:
-          - signal: stop
-        else:
-        - signal: stop
+          - regex: (^[1-9][0-9]*$)
+            then:
+            - set-state: ${{STATE_PID}}
+            - sh: ps --pid ${{${{STATE_PID}}}} -o cmd=
+            - regex: java
+              then:
+              - signal: stop
   # inspect the pid
   - sh: ps -p ${{${{STATE_PID}}}}
 
