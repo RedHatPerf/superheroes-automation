@@ -49,7 +49,7 @@ scripts:
       -Dquarkus.container-image.build=true
       -Dquarkus.container-image.push=false
       -Dquarkus.container-image.tag=${{SUPERHEROES_CUSTOM_TAG}}
-      -Dquarkus.native.additional-build-args=-H:-DeleteLocalSymbols,-H:-OmitInlinedMethodDebugLineInfo,-H:+PreserveFramePointer 
+      -Dquarkus.native.additional-build-args=-H:-DeleteLocalSymbols,-H:-OmitInlinedMethodDebugLineInfo 
       -Dquarkus.native.debug.enabled
       -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
   # override images
