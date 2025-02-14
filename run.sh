@@ -72,7 +72,7 @@ echo "  > Driver:           $DRIVER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="jbang qDup@hyperfoil ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml $ADDITIONAL_ARGS"
+QDUP_CMD="jbang qDup@hyperfoil $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
 
 echo Executing: "$QDUP_CMD"
 
