@@ -70,23 +70,23 @@ scripts:
   - sh: > 
        if ${{HEROES_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
-         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} ./rest-heroes/ --memory 1G --cpu-quota=100000 | tee -a /tmp/superheroes.build.log;
+         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} --memory 1G --cpuset-cpus ${{HEROES_REST_CPU}} ./rest-heroes/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{VILLAINS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build -f ./rest-villains/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
-         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} ./rest-villains/ --memory 1G --cpu-quota=100000 | tee -a /tmp/superheroes.build.log;
+         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} --memory 1G --cpuset-cpus ${{VILLAINS_REST_CPU}} ./rest-villains/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{LOCATIONS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build -f ./grpc-locations/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
-         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} ./grpc-locations/ --memory 1G --cpu-quota=100000 | tee -a /tmp/superheroes.build.log;
+         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} --memory 1G --cpuset-cpus ${{LOCATIONS_GRPC_CPU}} ./grpc-locations/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{FIGHTS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build -f ./rest-fights/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} ./rest-fights/ --memory 1G --cpu-quota=100000 | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --memory 1G --cpuset-cpus ${{FIGHTS_REST_CPU}} ./rest-fights/ --memory 1G | tee -a /tmp/superheroes.build.log;
        fi
   
   # override images
