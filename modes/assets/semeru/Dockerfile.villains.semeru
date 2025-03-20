@@ -36,6 +36,7 @@ WORKDIR /app
 RUN chown -R 185 /app/ && chmod -R 777 /app/
 
 ARG DS_SERVER=localhost
+ARG SUT_SERVER=localhost
 
 ENV QUARKUS_DATASOURCE_JDBC_URL=jdbc:postgresql://${DS_SERVER}:5433/villains_database
 ENV QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
@@ -64,7 +65,7 @@ USER 185
 
 EXPOSE 8084
 
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseJITServer -XX:JITServerAddress=${SUT_SERVER}"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
 #Create Checkpoint

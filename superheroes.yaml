@@ -27,6 +27,7 @@ scripts:
 
   infer-services-hostnames:
   # infer the hostnames based on the provided host servers
+  - set-state: JIT_SERVER_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
   - set-state: HEROES_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
   - set-state: VILLAINS_REST_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
   - set-state: LOCATIONS_GRPC_HOSTNAME "${{= getHostname( '${{SUT_SERVER}}' )}}"
@@ -94,6 +95,40 @@ scripts:
       1m: # max wait time
       - abort: Opentelemetry has not been ready in 1 min
   - signal: OTEL_READY
+
+  ###### JITSERVER ######
+  start-jit-server:
+  - js: ${{JIT_SERVER_ENABLED}}
+    then:
+    - log: starting jit server...
+    - sh: >
+        ${{CONTAINER_RUNTIME}} run -d
+        --name jit-server
+        --memory ${{JIT_SERVER_MEMORY}}
+        --cpuset-cpus ${{JIT_SERVER_CPU}}
+        -p ${{JIT_SERVER_PORT}}:38400
+        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        ${{JIT_SERVER_IMAGE:'icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal'}}
+        "jitserver" 
+      then:
+      - regex: (?<HOST.JIT_SERVER_POD_ID>[a-f0-9]{64}$)
+        else:
+        - abort: failed to capture pod id for Jit Server service
+      - script: extract-service-pid
+        with:
+          CONTAINER_ID: ${{HOST.JIT_SERVER_POD_ID}}
+          STATE_PID: HOST.JIT_SERVER_PID
+          IS_ENTRYPOINT_WRAPPER: false
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.JIT_SERVER_POD_ID}}
+      silent: true # prevent logs to be printed in the terminal
+      watch:
+      - regex: JITServer is ready
+        then:
+        - ctrlC
+      timer:
+        1m: # max wait time
+        - abort: Jit Server has not been ready in 1 min
+    - signal: JIT_SERVER_READY
 
   ###### HEROES ######
 
@@ -561,9 +596,15 @@ scripts:
       then:
       - queue-download: ${{HEROES_REST_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
+  - js: ${{JIT_SERVER_ENABLED}}
+    then:
+    - read-state: ${{HOST.JIT_SERVER_POD_ID}}
+      then:
+      - queue-download: ${{JIT_SERVER_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}}
 
   # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}}
+  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}} ${{HOST.JIT_SERVER_POD_ID:}}
 
 states:
   # container exec
@@ -655,6 +696,15 @@ states:
   FIGHTS_REST_LOGS_FILE: /tmp/fights.logs
   FIGHTS_REST_MEMORY: 1G
   FIGHTS_REST_CPU: 4
+
+    # Heroes
+  JIT_SERVER_ENABLED: false
+  JIT_SERVER_IMAGE: "icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal"
+  JIT_SERVER_HOSTNAME:
+  JIT_SERVER_PORT: 38400
+  JIT_SERVER_LOGS_FILE: /tmp/jitserver.logs
+  JIT_SERVER_MEMORY: 4G
+  JIT_SERVER_CPU: 5-8
 
   UI_ENABLED: true
   FIGHTS_UI_IMAGE: "quay.io/quarkus-super-heroes/ui-super-heroes:native-latest"

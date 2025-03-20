@@ -30,6 +30,7 @@ roles:
       - prepare-images # should be exposed by script files in /modes folder
       - infer-datastouce-hostnames
       - infer-services-hostnames
+      - start-jit-server
       - start-heroes-rest
       - start-villains-rest
       - start-locations-grpc
