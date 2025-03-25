@@ -27,6 +27,7 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - start-jit-server
       - prepare-images # should be exposed by script files in /modes folder
       - infer-datastouce-hostnames
       - infer-services-hostnames
