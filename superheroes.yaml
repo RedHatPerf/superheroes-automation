@@ -109,7 +109,7 @@ scripts:
         -p ${{JIT_SERVER_PORT}}:38400
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{JIT_SERVER_IMAGE:'icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal'}}
-        "jitserver" 
+        jitserver -XX:+JITServerLogConnections
       then:
       - regex: (?<HOST.JIT_SERVER_POD_ID>[a-f0-9]{64}$)
         else:
