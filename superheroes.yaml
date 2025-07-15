@@ -15,7 +15,7 @@
 
 scripts:
 
-  infer-datastouce-hostnames:
+  infer-datasource-hostnames:
   # infer the hostnames based on the provided host servers
   - set-state: HEROES_DB_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
   - set-state: VILLAINS_DB_HOSTNAME ${{= getHostname( '${{DS_SERVER}}' )}}
