@@ -40,7 +40,7 @@ It uses qDup under the hood, therefore be sure you have properly installed it in
 
 ```bash
 $ ./run.sh
-Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params]
+Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] [benchmark_params]
 ```
 
 * `<native|jvm|<custom>>`:  which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml). Modes are extensible by creating a custom (`/modes/<custom>.script.yaml`).
@@ -56,23 +56,16 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [local|remote] [benchmark_params
 #### Get all heroes locally
 
 ```bash
-./run.sh native get-all-heroes local
+./run.sh native get-all-heroes hyperfoil local
 ```
 
 #### Get all villains locally with 20s duration
 
 ```bash
-./run.sh native get-all-villains local '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'
+./run.sh native get-all-villains hyperfoil local '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'
 ```
 
-## Run directly using qDup
-
-By default, the `run.sh` will print out the qDup command that it will execute such that you can always 
-run the same directly without passing through the script.
-
-```bash
-jbang qDup@hyperfoil benchmarks/get-all-heroes/get-all-heroes.env.yaml envs/local.env.yaml modes/native.script.yaml util.yaml hyperfoil.yaml superheroes.yaml qdup.yaml
-```
+## Additional information
 
 Some of those qDup config files are mandatory and cannot be removed:
 - `util.yaml`
@@ -122,7 +115,7 @@ The automation is generic enough to let you setup your preferred load driver, by
 You can simply create your own qDup script under [`/drivers`](./drivers/) folder.
 There are just a couple of things to be aware:
 1. You need to implement the expected scripts (`setup-driver`, `run-benchmark`, `cleanup-driver`), see [driver template](./drivers/driver.tmpl.yaml) as base example.
-2. If you want to have the profiling working you should ensure you driver raise the following signals:
+2. If you want to have the profiling working you should ensure your driver raise the following signals:
    * `HF_BENCHMARK_STARTED`: when the profiling can be started
    * `HF_BENCHMARK_TERMINATED`: when the profiling can be stopped
    * `HF_STEADY_PHASE_STARTED`: (optional) when an additional profiling can be started
@@ -168,3 +161,6 @@ You just need to remember to override the superheroes images using `set-state`, 
 
 > [!NOTE]
 > If your images are already available somewhere you can simply override the images states without actually re-building anything.
+
+## Report output
+By default, qDup will generate the output withing the `report-output` folder
