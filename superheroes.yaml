@@ -611,7 +611,7 @@ states:
   CONTAINER_RUNTIME: docker
   MAP_USER_GROUP: true
   IS_NATIVE: false
-  JAVA_OPTS_APPEND: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+  JAVA_OPTS_APPEND: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus.log.console.level=WARN"
 
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main
