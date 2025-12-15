@@ -333,6 +333,7 @@ scripts:
         -e QUARKUS_DATASOURCE_PASSWORD=locations
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_LOCATION_GRPC__LEVEL=WARN
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
@@ -466,6 +467,7 @@ scripts:
         -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
         -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_FIGHT_SERVICE__LEVEL=WARN
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
@@ -568,7 +570,9 @@ scripts:
         silent: true
 
   # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f $(${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio")
+  - sh: ${{CONTAINER_RUNTIME}} rm -f $(${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio") || true
+  # kill leftovers ports
+  - sh: lsof -ti:${{FIGHTS_DB_PORT}},${{APICURIO_PORT}},${{VILLAINS_DB_PORT}},${{HEROES_DB_PORT}},${{LOCATIONS_DB_PORT}},${{OTEL_RECEIVER_PORT}},${{KAFKA_PORT}} | xargs -r kill -9
 
   # sut - cleanup
   cleanup-superheroes:
@@ -605,13 +609,14 @@ scripts:
 
   # remove all pods
   - sh: ${{CONTAINER_RUNTIME}} rm -f $(${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes")
+  - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
 
 states:
   # container exec
   CONTAINER_RUNTIME: docker
   MAP_USER_GROUP: true
   IS_NATIVE: false
-  JAVA_OPTS_APPEND: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Dquarkus.log.console.level=WARN"
+  JAVA_OPTS_APPEND: "-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 
   SUPERHEROES_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_COMMIT: main
