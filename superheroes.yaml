@@ -568,9 +568,9 @@ scripts:
         silent: true
 
   # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}} ${{HOST.JAEGER_POD_ID:}} ${{HOST.OTEL_POD_ID:}}
+  - sh: ${{CONTAINER_RUNTIME}} rm -f $(${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio")
 
-
+  # sut - cleanup
   cleanup-superheroes:
   - js: ${{FIGHTS_ENABLED}}
     then:
@@ -604,7 +604,7 @@ scripts:
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}}
 
   # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}} ${{HOST.JIT_SERVER_POD_ID:}}
+  - sh: ${{CONTAINER_RUNTIME}} rm -f $(${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes")
 
 states:
   # container exec
