@@ -67,8 +67,6 @@ phases:
                 - awaitVar: randomHero
                 - awaitVar: randomVillain
                 - awaitVar: randomLocation
-                - thinkTime:
-                    duration: !param PAUSE_TIME_DURATION 1s
                 - newSequence: doFight
 
           sequences:
