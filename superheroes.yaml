@@ -194,7 +194,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.HEROES_REST_POD_ID}}
           STATE_PID: HOST.HEROES_REST_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_REST_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.HEROES_REST_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -519,7 +519,11 @@ scripts:
       ignore-exit-code: true
 
   cleanup-datasources:
+  - wait-for: CLEANUP_SUT_FINISHED
   - script: cleanup-superheroes-repo
+  # safest workflow. stop -> collect logs -> collect artifacts -> rm
+  # Stop the container
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - read-state: ${{HOST.OTEL_POD_ID}}
     then:
     - queue-download: ${{OTEL_LOGS_FILE}}
@@ -569,48 +573,60 @@ scripts:
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_DB_POD_ID}} > ${{LOCATIONS_DB_LOGS_FILE}}
         silent: true
 
-  # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
+  # then, force and remove all pods if needed
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   # kill leftovers ports
   - sh: lsof -ti:${{FIGHTS_DB_PORT}},${{APICURIO_PORT}},${{VILLAINS_DB_PORT}},${{HEROES_DB_PORT}},${{LOCATIONS_DB_PORT}},${{OTEL_RECEIVER_PORT}},${{KAFKA_PORT}} | xargs -r kill -9
 
   # sut - cleanup
   cleanup-superheroes:
+  # it will stop the application by default
+  - upload: ${{ENV.SCRIPT_DIR}}/modes/assets/semeru/close_sockets.sh /tmp/
+  - sh: ${{CONTAINER_RUNTIME}} exec -i -u 0 ${{HOST.HEROES_REST_POD_ID}} sh < /tmp/close_sockets.sh
+  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} jcmd /deployments/quarkus-run.jar JDK.checkpoint
+  # safest workflow. stop -> collect logs -> collect artifacts -> rm
+  # we need the stop event because start-quarkus.sh uses SIGTERM to create the checkpoint
+  # Stop the container
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
       then:
       - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}} 2>&1
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
       then:
       - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}} 2>&1
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}} 2>&1
   - js: ${{HEROES_ENABLED}}
     then:
     - read-state: ${{HOST.HEROES_REST_POD_ID}}
       then:
+      - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log cr
       - queue-download: ${{HEROES_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
+      - queue-download: app.log
+      - queue-download: cr
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/cr ./cr
   - js: ${{JIT_SERVER_ENABLED}}
     then:
     - read-state: ${{HOST.JIT_SERVER_POD_ID}}
       then:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}}
-
-  # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} ps -a -q --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}} 2>&1
+  # then, force and remove all pods if needed
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
-
+  - signal: CLEANUP_SUT_FINISHED
 states:
   # container exec
   CONTAINER_RUNTIME: docker

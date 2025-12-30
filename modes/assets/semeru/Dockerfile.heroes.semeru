@@ -31,6 +31,7 @@ RUN set -eux; \
     echo "${DUMB_INIT_SHA256} */usr/bin/dumb-init" | sha256sum -c -; \
     chmod +x /usr/bin/dumb-init;
 
+RUN microdnf install gdb procps-ng -y
 RUN mkdir -p /app
 WORKDIR /app
 
@@ -60,13 +61,18 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
-RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
+RUN mkdir -p /etc/criu && \
+    echo "tcp-close" >> /etc/criu/default.conf && \
+    echo "shell-job" >> /etc/criu/default.conf && \
+    echo "ext-unix-sk" >> /etc/criu/default.conf
 
-USER 185
+# So far, only working with root user
+# USER 185
 
 EXPOSE 8083
 
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseJITServer -XX:JITServerAddress=${SUT_SERVER}"
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["bash", "start-quarkus.sh"]
