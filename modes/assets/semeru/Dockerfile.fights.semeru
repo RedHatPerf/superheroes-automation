@@ -1,4 +1,5 @@
-FROM icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 USER 0
 
 # Install dumb-init
@@ -73,8 +74,5 @@ RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
 
 USER 185
 
-# Create checkpoint
-RUN ./start-quarkus.sh http://localhost:8082/api/fights
-
-CMD ["bash", "start-quarkus.sh", "http://localhost:8082/api/fights"]
+CMD ["bash", "start-quarkus.sh"]
 

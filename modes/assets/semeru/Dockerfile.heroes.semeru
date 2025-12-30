@@ -1,4 +1,5 @@
-FROM icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 USER 0
 
 # Install dumb-init
@@ -68,8 +69,4 @@ EXPOSE 8083
 ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseJITServer -XX:JITServerAddress=${SUT_SERVER}"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
-# Create checkpoint
-RUN ./start-quarkus.sh http://localhost:8083/api/heroes
-
-CMD ["bash", "start-quarkus.sh", "http://localhost:8083/api/heroes"]
-
+CMD ["bash", "start-quarkus.sh"]

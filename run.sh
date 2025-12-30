@@ -72,7 +72,14 @@ echo "  > Driver:           $DRIVER"
 echo "  > Server:           $LOCATION"
 echo "  > Benchmark params: $BENCHMARK_PARAMS"
 
-QDUP_CMD="jbang qDup@hyperfoil -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
+QDUP_CMD="jbang qDup@hyperfoil -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml"
+
+# Special handling for semeru25
+if [ "$MODE" = "semeru25.build" ]; then
+  QDUP_CMD="$QDUP_CMD modes/semeru.build.script.yaml "
+fi
+
+QDUP_CMD="$QDUP_CMD profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
 
 echo Executing: "$QDUP_CMD"
 
