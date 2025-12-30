@@ -69,27 +69,27 @@ scripts:
       -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
   - sh: > 
        if ${{HEROES_ENABLED}}; then
-         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
+         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --memory 1G --cpuset-cpus ${{HEROES_REST_CPU}} ./rest-heroes/ | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{HEROES_REST_CPU}} ./rest-heroes/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{VILLAINS_ENABLED}}; then
-         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-villains/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
+         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-villains/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --memory 1G --cpuset-cpus ${{VILLAINS_REST_CPU}} ./rest-villains/ | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{VILLAINS_REST_CPU}} ./rest-villains/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{LOCATIONS_ENABLED}}; then
-         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./grpc-locations/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
+         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./grpc-locations/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-        --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --memory 1G --cpuset-cpus ${{LOCATIONS_GRPC_CPU}} ./grpc-locations/ | tee -a /tmp/superheroes.build.log;
+        --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{LOCATIONS_GRPC_CPU}} ./grpc-locations/ | tee -a /tmp/superheroes.build.log;
        fi
   - sh: >
        if ${{FIGHTS_ENABLED}}; then
-         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-fights/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}} --cap-add=ALL --security-opt seccomp=unconfined \
+         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-fights/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --memory 1G --cpuset-cpus ${{FIGHTS_REST_CPU}} ./rest-fights/ --memory 1G | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{FIGHTS_REST_CPU}} ./rest-fights/ --memory 1G | tee -a /tmp/superheroes.build.log;
        fi
   
   # override images
@@ -102,21 +102,23 @@ scripts:
 
 
 states:
+  IMAGE_REPOSITORY: icr.io/appcafe/ibm-semeru-runtimes
+  BASE_IMAGE: open-21-jdk-ubi9-minimal
+  JAVA_VERSION: 21.0.5-tem
+  SUPERHEROES_CUSTOM_TAG: semeru
+
   MAP_USER_GROUP: false
 
   SUPERHEROES_BUILD_REPO: https://github.com/quarkusio/quarkus-super-heroes.git
   SUPERHEROES_BUILD_COMMIT: main
   SUPERHEROES_BUILD_FOLDER: /tmp/build-quarkus-super-heroes
 
-  SUPERHEROES_CUSTOM_TAG: semeru
-
   # change these values
   CONTAINERFILES_FOLDER: semeru
   CONTAINER_RUNTIME_PARAMS: --privileged
-  JAVA_VERSION: 21.0.5-tem
 
   # required to properly extract the java process pid
-  IS_ENTRYPOINT_WRAPPER: true
+  IS_ENTRYPOINT_WRAPPER: false
 
   # let's use nightly builds until https://github.com/async-profiler/async-profiler/commit/29ee888a42faba6be581601755005be317c7fc29 gets released
   # checkout the latest pre-release version here https://github.com/async-profiler/async-profiler/releases/tag/nightly
