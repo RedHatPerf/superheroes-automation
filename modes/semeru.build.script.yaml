@@ -21,7 +21,7 @@ scripts:
   - log: building custom version of native images..
   - script: clone-superheroes
   # override Dockerfiles, e.g., Dockerfile or whatever else you need
-  # TODO(user): change the filenames in according to what you need to override, either native or jvm
+  # change the filenames in according to what you need to override, either native or jvm
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.heroes.semeru /tmp
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.villains.semeru /tmp
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.locations.semeru /tmp
@@ -60,6 +60,17 @@ scripts:
   - script: sdk-select-java
     with:
       JAVA_VERSION: ${{JAVA_VERSION}}
+
+  # copy training artifacts
+  - sh: rm -fR /tmp/checkpoint/heroes
+  - sh: rm -fR /tmp/checkpoint/villains
+  - sh: rm -fR /tmp/checkpoint/locations
+  - sh: rm -fR /tmp/checkpoint/fights
+  # docker build requires a folder
+  - sh: mkdir -p /tmp/checkpoint/heroes
+  - sh: mkdir -p /tmp/checkpoint/villains
+  - sh: mkdir -p /tmp/checkpoint/locations
+  - sh: mkdir -p /tmp/checkpoint/fights
   
   # TODO(user): change the build script in according to the build you are willing to do
   - sh: >
@@ -67,7 +78,18 @@ scripts:
       -Dmaven.compiler.release=21
       -Dquarkus.http.host=0.0.0.0
       -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
-  - sh: > 
+  # Copy checkpoint artifacts to build context if PHASE=OPTIMIZED
+  - sh: >
+       if ${{HEROES_ENABLED}}; then
+         if [ "${{PHASE}}" = "TRAINING" ]; then
+           echo "PHASE=TRAINING: TODO"
+         elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
+           echo "PHASE=OPTIMIZED: TODO"
+           # cp -r /tmp/checkpoint/heroes ./rest-heroes/checkpoint;
+         fi
+       fi
+
+  - sh: >
        if ${{HEROES_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
@@ -104,7 +126,7 @@ scripts:
 states:
   IMAGE_REPOSITORY: icr.io/appcafe/ibm-semeru-runtimes
   BASE_IMAGE: open-21-jdk-ubi9-minimal
-  JAVA_VERSION: 21.0.5-tem
+  JAVA_VERSION: 21.0.9-sem
   SUPERHEROES_CUSTOM_TAG: semeru
 
   MAP_USER_GROUP: false
@@ -124,3 +146,6 @@ states:
   # checkout the latest pre-release version here https://github.com/async-profiler/async-profiler/releases/tag/nightly
   ASPROF_VERSION: 3.0-d1498a6
   ASPROF_RELEASE_URL: https://github.com/async-profiler/async-profiler/releases/download/nightly/async-profiler-${{ASPROF_VERSION}}-linux-x64.tar.gz
+
+  # STANDARD, TRAINING, OPTIMIZED
+  PHASE: STANDARD
