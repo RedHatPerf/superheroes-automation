@@ -39,6 +39,21 @@ scripts:
   - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
   - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
 
+  prepare-superheroes-sut:
+  - read-state: ${{PHASE}}
+    then:
+      - regex: "TRAINING"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCCheckpointTo=/app/cr "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+
   ###### OPENTELEMETRY ######
   start-jaeger:
   - log: starting Jaeger...
@@ -518,6 +533,53 @@ scripts:
       command: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
       ignore-exit-code: true
 
+  save-sut-artifacts:
+  - wait-for: HF_BENCHMARK_TERMINATED
+  - sh: sleep 5
+  - read-state: ${{PHASE}}
+    then:
+      - regex: "TRAINING"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                  - sh: rm -f close_sockets.txt checkpoint.txt
+                  - upload: ${{ENV.SCRIPT_DIR}}/modes/assets/semeru/close_sockets.sh /tmp/
+                  - sh: ${{CONTAINER_RUNTIME}} exec -i -u 0 ${{HOST.HEROES_REST_POD_ID}} sh < /tmp/close_sockets.sh > close_sockets.txt 2>&1
+                  # it will stop the application by default
+                  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} jcmd /deployments/quarkus-run.jar JDK.checkpoint > checkpoint.txt 2>&1
+                  - queue-download: close_sockets.txt
+                  - queue-download: checkpoint.txt
+  # safest workflow. stop -> collect artifacts -> rm
+  # Stop the containers
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
+  - js: ${{HEROES_ENABLED}}
+    then:
+      - read-state: ${{HOST.HEROES_REST_POD_ID}}
+        then:
+          - set-state: CR_FOLDER cr
+          - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log cr
+          - queue-download: ${{HEROES_REST_LOGS_FILE}}
+          - queue-download: app.log
+          - queue-download: ${{CR_FOLDER}}
+          - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
+          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
+          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/${{CR_FOLDER}} ./${{CR_FOLDER}}
+
+          - read-state: ${{PHASE}}
+            then:
+              - regex: "TRAINING"
+                then:
+                  - sh: if [ ! -d "${{CR_FOLDER}}" ]; then echo "MISSING"; elif [ -z "$(find "${{CR_FOLDER}}" -mindepth 1 -maxdepth 1)" ]; then echo "EMPTY"; else echo "NOT_EMPTY"; fi
+                    then:
+                      - regex: "MISSING"
+                        then:
+                          - abort: ${{CR_FOLDER}} folder is missing
+                      - regex: "^EMPTY$"
+                        then:
+                          - abort: ${{CR_FOLDER}} folder is empty
+
   cleanup-datasources:
   - wait-for: CLEANUP_SUT_FINISHED
   - script: cleanup-superheroes-repo
@@ -580,14 +642,6 @@ scripts:
 
   # sut - cleanup
   cleanup-superheroes:
-  # it will stop the application by default
-  - upload: ${{ENV.SCRIPT_DIR}}/modes/assets/semeru/close_sockets.sh /tmp/
-  - sh: ${{CONTAINER_RUNTIME}} exec -i -u 0 ${{HOST.HEROES_REST_POD_ID}} sh < /tmp/close_sockets.sh
-  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} jcmd /deployments/quarkus-run.jar JDK.checkpoint
-  # safest workflow. stop -> collect logs -> collect artifacts -> rm
-  # we need the stop event because start-quarkus.sh uses SIGTERM to create the checkpoint
-  # Stop the container
-  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
@@ -606,17 +660,6 @@ scripts:
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}} 2>&1
-  - js: ${{HEROES_ENABLED}}
-    then:
-    - read-state: ${{HOST.HEROES_REST_POD_ID}}
-      then:
-      - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log cr
-      - queue-download: ${{HEROES_REST_LOGS_FILE}}
-      - queue-download: app.log
-      - queue-download: cr
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/cr ./cr
   - js: ${{JIT_SERVER_ENABLED}}
     then:
     - read-state: ${{HOST.JIT_SERVER_POD_ID}}

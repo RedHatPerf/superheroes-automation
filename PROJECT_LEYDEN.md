@@ -64,15 +64,13 @@ This approach maintains the simplicity of the benchmark by supporting three dist
 
 **Training** run using Eclipse OpenJ9
 ```bash
-./run.sh semeru.build get-all-heroes hyperfoil local
+./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
 ```
 
 ## TODO List
-* Fix training run example in PROJECT_LEYDEN.md (line 67 - currently identical to standard)
 * Address root user security issue (USER 185) - modes/assets/semeru/Dockerfile.heroes.semeru
 * Add checkpoint support for villains, locations, fights services
 * Implement restore/optimized phase
-* Add error handling for checkpoint failures
 * Add back JIT Server. It should be optimal.
 * Test end-to-end checkpoint/restore workflow
 * Add validation step after restore

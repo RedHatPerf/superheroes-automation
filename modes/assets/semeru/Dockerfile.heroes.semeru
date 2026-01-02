@@ -1,4 +1,5 @@
 ARG BASE_IMAGE
+
 FROM ${BASE_IMAGE}
 USER 0
 
@@ -61,10 +62,13 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
+RUN mkdir -p /app/cr
 RUN mkdir -p /etc/criu && \
     echo "tcp-close" >> /etc/criu/default.conf && \
     echo "shell-job" >> /etc/criu/default.conf && \
     echo "ext-unix-sk" >> /etc/criu/default.conf
+
+# COPY --chown=185:root checkpoint/ /app/checkpoint/
 
 # So far, only working with root user
 # USER 185
