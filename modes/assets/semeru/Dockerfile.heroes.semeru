@@ -1,4 +1,6 @@
-FROM icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal
+ARG BASE_IMAGE
+
+FROM ${BASE_IMAGE}
 USER 0
 
 # Install dumb-init
@@ -30,6 +32,7 @@ RUN set -eux; \
     echo "${DUMB_INIT_SHA256} */usr/bin/dumb-init" | sha256sum -c -; \
     chmod +x /usr/bin/dumb-init;
 
+RUN microdnf install gdb procps-ng -y
 RUN mkdir -p /app
 WORKDIR /app
 
@@ -59,17 +62,21 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
-RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
+RUN mkdir -p /app/cr
+RUN mkdir -p /etc/criu && \
+    echo "tcp-close" >> /etc/criu/default.conf && \
+    echo "shell-job" >> /etc/criu/default.conf && \
+    echo "ext-unix-sk" >> /etc/criu/default.conf
 
-USER 185
+# COPY --chown=185:root checkpoint/ /app/checkpoint/
+
+# So far, only working with root user
+# USER 185
 
 EXPOSE 8083
 
-ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseJITServer -XX:JITServerAddress=${SUT_SERVER}"
+ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
-# Create checkpoint
-RUN ./start-quarkus.sh http://localhost:8083/api/heroes
-
-CMD ["bash", "start-quarkus.sh", "http://localhost:8083/api/heroes"]
-
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["bash", "start-quarkus.sh"]

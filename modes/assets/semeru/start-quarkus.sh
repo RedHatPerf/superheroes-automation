@@ -1,26 +1,12 @@
 #!/bin/bash
 
-ENDPOINT=${1}
+$JAVA_HOME/bin/java -version 2>&1
 
-# Check if the directory "cr" exists
-if [ -d "cr" ]; then
-    exec dumb-init --rewrite 15:2 -- "./restore.sh"
-else
-    echo "start checkpoint run"
-    for i in {1..500}; do ./pidplus.sh; done
-    mkdir cr
-    $JAVA_HOME/bin/java -XX:CRaCCheckpointTo=cr -Dopenj9.internal.criu.unprivilegedMode=true ${JAVA_OPTS} ${JAVA_OPTS_APPEND} -jar ${JAVA_APP_JAR} 1>out 2>err </dev/null &
+echo "----"
+echo "JAVA_OPTS=${JAVA_OPTS}"
+echo "JAVA_OPTS_APPEND=${JAVA_OPTS_APPEND}"
+echo "----"
 
-    sleep 10
-
-    if [[ "${ENDPOINT}" != "" ]]
-    then
-      for i in {1..3}; do curl -s -w ''%{http_code}'' ${ENDPOINT} ; echo ""; done
-    fi
-    $JAVA_HOME/bin/jcmd ${JAVA_APP_JAR} JDK.checkpoint
-    cat out
-    cat err
-    sleep 10
-    echo "end checkpoint run"
-fi
-
+# 1. exec: Replaces shell with Java (PID stability)
+# 2. > app.log: Detaches stdout from Docker (Fixes err=-52)
+exec $JAVA_HOME/bin/java ${JAVA_OPTS} ${JAVA_OPTS_APPEND} -jar ${JAVA_APP_JAR} > /deployments/app.log 2>&1

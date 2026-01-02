@@ -16,9 +16,8 @@
 # limitations under the License.
 ###############################################################################
 
-# Needed so the automation knows the service is up.
-tail -f -n +1 out &
-
 /opt/criu/criu restore --unprivileged -D ./cr --file-locks --shell-job -v4 --log-file=restore.log --skip-file-rwx-check --tcp-established 1>>out 2>>err </dev/null
 
-exit 0
+# This replaces the shell with 'tail'. It runs forever, keeping the container alive.
+# It reads both 'out' and 'err' so you see everything in 'docker logs'.
+exec tail -f -n +1 out err

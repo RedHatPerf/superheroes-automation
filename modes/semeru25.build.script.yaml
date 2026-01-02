@@ -1,0 +1,8 @@
+# IBM Semeru OpenJDK 25 Build Configuration
+# This file only contains overrides - it reuses all scripts from semeru.build.script.yaml
+# Usage: qDup will merge this with semeru.build.script.yaml when both are specified
+
+states:
+  BASE_IMAGE: open-25-jdk-ubi9-minimal
+  JAVA_VERSION: 25.0.1-sem
+  SUPERHEROES_CUSTOM_TAG: semeru25
