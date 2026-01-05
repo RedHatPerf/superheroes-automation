@@ -26,51 +26,30 @@ scripts:
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.villains.semeru /tmp
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.locations.semeru /tmp
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.fights.semeru /tmp
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/pidplus.sh /tmp
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/restore.sh /tmp
   - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/start-quarkus.sh /tmp
 
   - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
 
   - sh: echo $'\n!src/main/docker' >> rest-heroes/.dockerignore
   - sh: yes | cp /tmp/Dockerfile.heroes.semeru rest-heroes/src/main/docker/Dockerfile.jvm
-  - sh: yes | cp /tmp/pidplus.sh rest-heroes/src/main/docker/pidplus.sh
-  - sh: yes | cp /tmp/restore.sh rest-heroes/src/main/docker/restore.sh
   - sh: yes | cp /tmp/start-quarkus.sh rest-heroes/src/main/docker/start-quarkus.sh
 
   - sh: echo $'\n!src/main/docker' >> rest-villains/.dockerignore
   - sh: yes | cp /tmp/Dockerfile.villains.semeru rest-villains/src/main/docker/Dockerfile.jvm
-  - sh: yes | cp /tmp/pidplus.sh rest-villains/src/main/docker/pidplus.sh
-  - sh: yes | cp /tmp/restore.sh rest-villains/src/main/docker/restore.sh
   - sh: yes | cp /tmp/start-quarkus.sh rest-villains/src/main/docker/start-quarkus.sh  
 
   - sh: echo $'\n!src/main/docker' >> grpc-locations/.dockerignore
   - sh: yes | cp /tmp/Dockerfile.locations.semeru grpc-locations/src/main/docker/Dockerfile.jvm
-  - sh: yes | cp /tmp/pidplus.sh grpc-locations/src/main/docker/pidplus.sh
-  - sh: yes | cp /tmp/restore.sh grpc-locations/src/main/docker/restore.sh
   - sh: yes | cp /tmp/start-quarkus.sh grpc-locations/src/main/docker/start-quarkus.sh
 
   - sh: echo $'\n!src/main/docker' >> rest-fights/.dockerignore
   - sh: yes | cp /tmp/Dockerfile.fights.semeru rest-fights/src/main/docker/Dockerfile.jvm
-  - sh: yes | cp /tmp/pidplus.sh rest-fights/src/main/docker/pidplus.sh
-  - sh: yes | cp /tmp/restore.sh rest-fights/src/main/docker/restore.sh
   - sh: yes | cp /tmp/start-quarkus.sh rest-fights/src/main/docker/start-quarkus.sh  
 
   - queue-download: /tmp/superheroes.build.log
   - script: sdk-select-java
     with:
       JAVA_VERSION: ${{JAVA_VERSION}}
-
-  # copy training artifacts
-  - sh: rm -fR /tmp/checkpoint/heroes
-  - sh: rm -fR /tmp/checkpoint/villains
-  - sh: rm -fR /tmp/checkpoint/locations
-  - sh: rm -fR /tmp/checkpoint/fights
-  # docker build requires a folder
-  - sh: mkdir -p /tmp/checkpoint/heroes
-  - sh: mkdir -p /tmp/checkpoint/villains
-  - sh: mkdir -p /tmp/checkpoint/locations
-  - sh: mkdir -p /tmp/checkpoint/fights
   
   # TODO(user): change the build script in according to the build you are willing to do
   - sh: >
@@ -78,40 +57,29 @@ scripts:
       -Dmaven.compiler.release=21
       -Dquarkus.http.host=0.0.0.0
       -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
-  # Copy checkpoint artifacts to build context if PHASE=OPTIMIZED
   - sh: >
-       if ${{HEROES_ENABLED}}; then
-         if [ "${{PHASE}}" = "TRAINING" ]; then
-           echo "PHASE=TRAINING: TODO"
-         elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
-           echo "PHASE=OPTIMIZED: TODO"
-           # cp -r /tmp/checkpoint/heroes ./rest-heroes/checkpoint;
-         fi
-       fi
-
-  - sh: >
-       if ${{HEROES_ENABLED}}; then
-         ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} \
-         --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{HEROES_REST_CPU}} ./rest-heroes/ | tee -a /tmp/superheroes.build.log;
-       fi
+      if ${{HEROES_ENABLED}}; then
+        ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-heroes/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}} \
+        --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
+        --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{HEROES_REST_CPU}} ./rest-heroes/
+      fi
   - sh: >
        if ${{VILLAINS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-villains/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{VILLAINS_REST_CPU}} ./rest-villains/ | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{VILLAINS_REST_CPU}} ./rest-villains/
        fi
   - sh: >
        if ${{LOCATIONS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./grpc-locations/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-        --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{LOCATIONS_GRPC_CPU}} ./grpc-locations/ | tee -a /tmp/superheroes.build.log;
+        --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{LOCATIONS_GRPC_CPU}} ./grpc-locations/
        fi
   - sh: >
        if ${{FIGHTS_ENABLED}}; then
          ${{CONTAINER_RUNTIME}} build --ulimit=nofile=1048576:1048576 -f ./rest-fights/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/rest-fights:${{SUPERHEROES_CUSTOM_TAG}} \
          --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{FIGHTS_REST_CPU}} ./rest-fights/ --memory 1G | tee -a /tmp/superheroes.build.log;
+         --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} --memory 1G --cpuset-cpus ${{FIGHTS_REST_CPU}} ./rest-fights/ --memory 1G
        fi
   
   # override images

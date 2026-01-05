@@ -67,7 +67,14 @@ This approach maintains the simplicity of the benchmark by supporting three dist
 ./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
 ```
 
+**Optimized** run using Eclipse OpenJ9
+```bash
+./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
+```
+
 ## TODO List
+* If heroes.logs contains "Restoring FAILED" during the optimized phase fail the build
+* Implement the idea of heroes_checkpoint_path - it can be http:// or falback to a folder for local developmenet
 * Address root user security issue (USER 185) - modes/assets/semeru/Dockerfile.heroes.semeru
 * Add checkpoint support for villains, locations, fights services
 * Implement restore/optimized phase
