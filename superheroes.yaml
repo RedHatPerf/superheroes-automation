@@ -50,7 +50,18 @@ scripts:
                 then:
                 - js: |
                     (input,state)=>{
-                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCCheckpointTo=/app/cr "
+                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCCheckpointTo=/app/checkpoint "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+      - regex: "OPTIMIZED"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCRestoreFrom=/app/checkpoint "
                       return '${{JAVA_OPTS_APPEND}}'
                     }
 
@@ -184,23 +195,30 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
-        ${{CONTAINER_RUNTIME}} run -d
-        --name rest-heroes
-        ${{ CONTAINER_RUNTIME_PARAMS }}
-        --memory ${{HEROES_REST_MEMORY}}
-        --cpuset-cpus ${{HEROES_REST_CPU}}
-        ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }}
-        -p ${{HEROES_REST_PORT}}:8083
-        -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
-        -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
-        -e QUARKUS_DATASOURCE_USERNAME=superman
-        -e QUARKUS_DATASOURCE_PASSWORD=superman
-        -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
-        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
-        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
+        if [ "${{PHASE}}" = "TRAINING" ]; then
+        
+          ${{CONTAINER_RUNTIME}} stop rest-heroes-commit || true
+          ${{CONTAINER_RUNTIME}} rm -f rest-heroes-commit || true
+        
+          ${{CONTAINER_RUNTIME}} run -d \
+          --name rest-heroes \
+          ${{ CONTAINER_RUNTIME_PARAMS }} \
+          --memory ${{HEROES_REST_MEMORY}} \
+          --cpuset-cpus ${{HEROES_REST_CPU}} \
+          ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }} \
+          -p ${{HEROES_REST_PORT}}:8083 \
+          -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database \
+          -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate \
+          -e QUARKUS_DATASOURCE_USERNAME=superman \
+          -e QUARKUS_DATASOURCE_PASSWORD=superman \
+          -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file \
+          -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}" \
+          -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}" \
+          ${{= getNetwork( '${{SUT_SERVER}}' ) }} \
+          ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}} ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
+        elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
+          docker run -d -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}" rest-heroes-commit
+        fi
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -548,29 +566,25 @@ scripts:
                   - upload: ${{ENV.SCRIPT_DIR}}/modes/assets/semeru/close_sockets.sh /tmp/
                   - sh: ${{CONTAINER_RUNTIME}} exec -i -u 0 ${{HOST.HEROES_REST_POD_ID}} sh < /tmp/close_sockets.sh > close_sockets.txt 2>&1
                   # it will stop the application by default
-                  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} jcmd /deployments/quarkus-run.jar JDK.checkpoint > checkpoint.txt 2>&1
+                  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} /bin/sh -c "ps -ef; jcmd /deployments/quarkus-run.jar JDK.checkpoint" > checkpoint.txt 2>&1
                   - queue-download: close_sockets.txt
                   - queue-download: checkpoint.txt
-  # safest workflow. stop -> collect artifacts -> rm
-  # Stop the containers
+  # wait until JDK.checkpoint is completed - TODO find other way
+  - sh: sleep 60
+    # Stop the containers
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - js: ${{HEROES_ENABLED}}
     then:
       - read-state: ${{HOST.HEROES_REST_POD_ID}}
         then:
-          - set-state: CR_FOLDER cr
-          - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log cr
-          - queue-download: ${{HEROES_REST_LOGS_FILE}}
-          - queue-download: app.log
-          - queue-download: ${{CR_FOLDER}}
-          - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
-          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
-          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/${{CR_FOLDER}} ./${{CR_FOLDER}}
-
           - read-state: ${{PHASE}}
             then:
               - regex: "TRAINING"
                 then:
+                  - set-state: CR_FOLDER checkpoint
+                  - sh: rm -fR checkpoint
+                  - queue-download: ${{CR_FOLDER}}
+                  - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/${{CR_FOLDER}} ./${{CR_FOLDER}}
                   - sh: if [ ! -d "${{CR_FOLDER}}" ]; then echo "MISSING"; elif [ -z "$(find "${{CR_FOLDER}}" -mindepth 1 -maxdepth 1)" ]; then echo "EMPTY"; else echo "NOT_EMPTY"; fi
                     then:
                       - regex: "MISSING"
@@ -642,6 +656,16 @@ scripts:
 
   # sut - cleanup
   cleanup-superheroes:
+  - js: ${{HEROES_ENABLED}}
+    then:
+      - read-state: ${{HOST.HEROES_REST_POD_ID}}
+        then:
+          - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log
+          - queue-download: ${{HEROES_REST_LOGS_FILE}}
+          - queue-download: app.log
+          - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
+          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
+
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
@@ -667,7 +691,8 @@ scripts:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}} 2>&1
   # then, force and remove all pods if needed
-  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
+  - sh: docker commit rest-heroes rest-heroes-commit
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
   - signal: CLEANUP_SUT_FINISHED
 states:

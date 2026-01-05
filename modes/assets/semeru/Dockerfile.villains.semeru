@@ -46,12 +46,8 @@ ENV QUARKUS_DATASOURCE_PASSWORD=superbad
 ENV QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
 ENV QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${DS_SERVER}:4317
 
-COPY --chown=185:root src/main/docker/pidplus.sh /app/pidplus.sh
-COPY --chown=185:root src/main/docker/restore.sh /app/restore.sh
 COPY --chown=185:root src/main/docker/start-quarkus.sh /app/start-quarkus.sh
 
-RUN chmod +x restore.sh
-RUN chmod +x pidplus.sh
 RUN chmod +x start-quarkus.sh
 
 # We make four distinct layers so if there are application changes the library layers can be re-used

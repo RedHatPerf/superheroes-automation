@@ -51,12 +51,8 @@ ENV MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL=http://${DS_SERV
 ENV KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${DS_SERVER}:9092
 ENV QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${DS_SERVER}:4317
 
-COPY --chown=185:root src/main/docker/pidplus.sh /app/pidplus.sh
-COPY --chown=185:root src/main/docker/restore.sh /app/restore.sh
 COPY --chown=185:root src/main/docker/start-quarkus.sh /app/start-quarkus.sh
 
-RUN chmod +x restore.sh
-RUN chmod +x pidplus.sh
 RUN chmod +x start-quarkus.sh
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
