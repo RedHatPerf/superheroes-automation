@@ -62,14 +62,24 @@ This approach maintains the simplicity of the benchmark by supporting three dist
 ./run.sh semeru.build get-all-heroes hyperfoil local
 ```
 
-**Training** run using Eclipse OpenJ9
+**Training** run using Eclipse OpenJ9 21
 ```bash
 ./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
 ```
 
-**Optimized** run using Eclipse OpenJ9
+**Optimized** run using Eclipse OpenJ9 21
 ```bash
 ./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
+```
+
+**Training** run using OpenJDK 25
+```bash
+./run.sh semeru25.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
+```
+
+**Optimized** run using OpenJDK 25
+```bash
+./run.sh semeru25.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
 ```
 
 ## TODO List
