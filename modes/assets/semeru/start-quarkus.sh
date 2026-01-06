@@ -13,8 +13,20 @@ echo "----"
 for i in {1..100}; do (exit 0); done
 CHECK_PID=$(bash -c 'echo $$')
 echo "Current PID counter is at approx: $CHECK_PID"
+
+# Define a cleanup function to forward the signal
+cleanup() {
+    echo "Container stopping, sending SIGTERM to Java (PID: $JAVA_PID)..."
+    kill -SIGTERM "$JAVA_PID"
+    wait "$JAVA_PID"
+    echo "Java process exited gracefully."
+}
+
+# Trap SIGTERM and SIGINT to run the cleanup function
+trap 'cleanup' SIGTERM SIGINT
+
 # The (...) forces a NEW process ID. if you use exec it won't use the new CHECK_PID
-(exec $JAVA_HOME/bin/java ${JAVA_OPTS} ${JAVA_OPTS_APPEND} -jar ${JAVA_APP_JAR}) >> /deployments/app.log 2>&1 &
+(exec $JAVA_HOME/bin/java ${JAVA_OPTS} ${JAVA_OPTS_APPEND} -jar ${JAVA_APP_JAR}) > /deployments/app.log 2>&1 &
 JAVA_PID=$!
 echo "Application started with High PID: $JAVA_PID"
 # Wait for it to finish (keeps the container alive)

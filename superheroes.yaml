@@ -53,6 +53,14 @@ scripts:
                       state["JAVA_OPTS_APPEND"] += " -XX:CRaCCheckpointTo=/app/checkpoint "
                       return '${{JAVA_OPTS_APPEND}}'
                     }
+              # https://openjdk.org/jeps/514
+              - regex: "25.0.1-tem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:AOTCacheOutput=/app/checkpoint/app.aot "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
       - regex: "OPTIMIZED"
         then:
           - read-state: ${{JAVA_VERSION}}
@@ -62,6 +70,14 @@ scripts:
                 - js: |
                     (input,state)=>{
                       state["JAVA_OPTS_APPEND"] += " -XX:CRaCRestoreFrom=/app/checkpoint "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+              # https://openjdk.org/jeps/514
+              - regex: "25.0.1-tem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -Xlog:aot -XX:AOTCache=/app/checkpoint/app.aot -XX:AOTMode=on "
                       return '${{JAVA_OPTS_APPEND}}'
                     }
 
@@ -161,6 +177,7 @@ scripts:
   start-heroes-db:
   - js: ${{HEROES_ENABLED}}
     then:
+    - sh: echo "SELECT 'My initialization script finished successfully' AS status;" >> ${{SUPERHEROES_FOLDER}}/rest-heroes/deploy/db-init/initialize-tables.sql
     - log: starting Heroes database...
     - sh: >
         ${{CONTAINER_RUNTIME}} run -d
@@ -178,11 +195,9 @@ scripts:
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
-      - regex: database system is ready to accept connections
+      - regex: My initialization script finished successfully
         then:
-        - countdown: db_heroes_ready 2
-          then:
-          - ctrlC
+        - ctrlC
       timer:
         1m: # max wait time
         - abort: Heroes db has not been ready in 1 min
@@ -195,30 +210,40 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
+        COMMON_ARGS=(
+          -d
+          --name rest-heroes
+          ${{ CONTAINER_RUNTIME_PARAMS }}
+          --memory ${{HEROES_REST_MEMORY}}
+          --cpuset-cpus ${{HEROES_REST_CPU}}
+          ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }}
+          -p ${{HEROES_REST_PORT}}:8083
+          -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
+          -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
+          -e QUARKUS_DATASOURCE_USERNAME=superman
+          -e QUARKUS_DATASOURCE_PASSWORD=superman
+          -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+          -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+          -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
+          ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        )
+        
         if [ "${{PHASE}}" = "TRAINING" ]; then
         
           ${{CONTAINER_RUNTIME}} stop rest-heroes-commit || true
           ${{CONTAINER_RUNTIME}} rm -f rest-heroes-commit || true
         
-          ${{CONTAINER_RUNTIME}} run -d \
-          --name rest-heroes \
-          ${{ CONTAINER_RUNTIME_PARAMS }} \
-          --memory ${{HEROES_REST_MEMORY}} \
-          --cpuset-cpus ${{HEROES_REST_CPU}} \
-          ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }} \
-          -p ${{HEROES_REST_PORT}}:8083 \
-          -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database \
-          -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate \
-          -e QUARKUS_DATASOURCE_USERNAME=superman \
-          -e QUARKUS_DATASOURCE_PASSWORD=superman \
-          -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file \
-          -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}" \
-          -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}" \
-          ${{= getNetwork( '${{SUT_SERVER}}' ) }} \
-          ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}} ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
+          IMAGE_NAME="${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}"
+          CMD_SUFFIX="${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}"
+        
         elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
-          docker run -d -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}" rest-heroes-commit
+        
+          IMAGE_NAME="rest-heroes-commit"
+          CMD_SUFFIX=""
+        
         fi
+        
+        ${{CONTAINER_RUNTIME}} run "${COMMON_ARGS[@]}" $IMAGE_NAME $CMD_SUFFIX
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -573,6 +598,7 @@ scripts:
   - sh: sleep 60
     # Stop the containers
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
+  - sh: sleep 60
   - js: ${{HEROES_ENABLED}}
     then:
       - read-state: ${{HOST.HEROES_REST_POD_ID}}
@@ -582,7 +608,7 @@ scripts:
               - regex: "TRAINING"
                 then:
                   - set-state: CR_FOLDER checkpoint
-                  - sh: rm -fR checkpoint
+                  - sh: rm -fR ${{CR_FOLDER}}
                   - queue-download: ${{CR_FOLDER}}
                   - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/${{CR_FOLDER}} ./${{CR_FOLDER}}
                   - sh: if [ ! -d "${{CR_FOLDER}}" ]; then echo "MISSING"; elif [ -z "$(find "${{CR_FOLDER}}" -mindepth 1 -maxdepth 1)" ]; then echo "EMPTY"; else echo "NOT_EMPTY"; fi
@@ -691,7 +717,7 @@ scripts:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}} 2>&1
   # then, force and remove all pods if needed
-  - sh: docker commit rest-heroes rest-heroes-commit
+  - sh: docker commit rest-heroes rest-heroes-commit || true
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
   - signal: CLEANUP_SUT_FINISHED
