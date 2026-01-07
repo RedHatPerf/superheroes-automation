@@ -1,0 +1,19 @@
+# Use RHEL UBI9 Minimal base
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+
+# Install required dependencies
+USER root
+RUN microdnf install -y tar gzip shadow-utils time && microdnf clean all
+
+# Environment variables for Java
+ENV JAVA_VERSION=jdk-25.0.1+8
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+# Download and Install Temurin 25.0.1
+# We use the Adoptium API to get the specific release binary
+RUN mkdir -p $JAVA_HOME && \
+    curl -LfsS https://api.adoptium.net/v3/binary/version/${JAVA_VERSION}/linux/x64/jdk/hotspot/normal/eclipse \
+    -o /tmp/jdk.tar.gz && \
+    tar --strip-components=1 -xzf /tmp/jdk.tar.gz -C $JAVA_HOME && \
+    rm -f /tmp/jdk.tar.gz

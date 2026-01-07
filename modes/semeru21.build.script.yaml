@@ -1,0 +1,10 @@
+# This file only contains overrides - it reuses all scripts from custom.jvm.build.script.yaml
+scripts:
+  prepare-images-super:
+  - log: no extra steps for semeru21
+
+states:
+  IMAGE_REPOSITORY: icr.io/appcafe/ibm-semeru-runtimes
+  BASE_IMAGE: open-21-jdk-ubi9-minimal
+  JAVA_VERSION: 21.0.9-sem
+  SUPERHEROES_CUSTOM_TAG: semeru

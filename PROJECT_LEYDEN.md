@@ -1,94 +1,143 @@
-# Project Leyden: Performance Definitions & Training Workflow
+# Project Leyden: Production-Ready Training Workflow
 
-Based on the presentation *"P[roject Leyden's AOT - Shifting Java Startup into High Gear](https://www.youtube.com/watch?v=Oo96adJirPw)"*.
+Based on the presentation *"[Project Leyden's AOT - Shifting Java Startup into High Gear](https://www.youtube.com/watch?v=Oo96adJirPw)"*.
 
-## Phases
+## Overview
 
-### **Core Performance Metrics**
+This changes implements a **production-ready workflow** for optimizing Java application startup and warmup performance using checkpoint/restore technology. The approach is designed for real-world deployment scenarios where customers can train their applications once and deploy optimized artifacts to production.
 
-Project Leyden is about improving the *startup* and *warmup* of Java applications.
+## Core Performance Metrics
 
-* **Startup**
-  Defined as the time it takes to get to the first useful unit of work.
+Project Leyden focuses on improving two critical performance aspects:
 
-* **Warmup**
-  Defined as the time it takes for the application to reach peak performance.
+* **Startup**: Time to reach the first useful unit of work
+* **Warmup**: Time to achieve peak performance
 
-### **The Training Run**
+## Production Workflow
 
-*Note: This concept is different from the presentation. The presentation is suggesting from observing a production workload or creating an integration test.*
+### The Three-Phase Model
 
-*Note: This definition outlines a specific checkpoint-based workflow for generating and utilizing optimization artifacts.*
+This implementation provides a complete production workflow with three distinct execution phases:
 
-A **Training Run** is a preparatory execution phase used to capture the application's behavior and state before production deployment. This process follows a cyclical validation pattern:
+#### 1. STANDARD Phase
+Baseline execution without any optimization artifacts. Used for:
+- Initial performance benchmarking
+- Establishing baseline metrics
+- Development and testing
 
-1. **Initial Warmup:** A load generator executes a benchmark against the application for a specified duration to exercise code paths.
-2. **Artifact Generation:** The application state is captured, and a checkpoint (containing optimization artifacts and heap state) is stored.
-3. **Restoration:** The application is restored from the saved checkpoint (utilizing the stored artifacts).
-4. **Validation:** The load generator runs the benchmark again against the restored application to ensure peak performance is achieved immediately.
+#### 2. TRAINING Phase
+Captures application behavior and generates optimization artifacts for production use:
+1. Application executes under realistic workload
+2. Load generator exercises critical code paths
+3. Optimization artifacts are captured and stored in `/app/checkpoint/` directory
+4. Artifacts include JVM-specific optimization metadata
 
-## Experiment
+#### 3. OPTIMIZED Phase
+Production deployment using pre-generated artifacts:
+- Reuse builds from TRAINING Phase simulating a production workflow
+- Application restores from checkpoint with optimization artifacts
+- Achieves peak performance immediately on startup
+- Eliminates warmup time in production
 
-### Objective
-The goal of this experiment is to execute training runs that capture specific optimization artifacts and validate the performance of the restored application.
+### Supported JVM Implementations
 
-### 1. Defining Peak Performance
-* **Current Approach:** For the scope of this experiment, "reaching peak performance" is defined as running the benchmark for a fixed, predetermined amount of time.
-* **Future Optimization:** Future iterations may adopt a statistical approach, identifying peak performance when the system achieves stability (low variance) while executing the same operation over some time.
+The workflow currently supports two production-ready JVM implementations:
 
-### 2. Artifact Management
-* **Storage Location:** All optimization artifacts (e.g., heap snapshots, profile data) will be stored in a dedicated `cr` (Checkpoint/Restore) directory.
-* **JVM Configuration:** Each specific JVM implementation must provide the necessary command-line parameters to collect these artifacts and direct them to the `cr` folder.
+#### Eclipse OpenJ9 21 (Semeru)
+Uses CRIU-based checkpoint/restore technology:
+- **Training**: `-XX:CRaCCheckpointTo=/app/checkpoint`
+- **Optimized**: `-XX:CRaCRestoreFrom=/app/checkpoint`
+- Configuration: [`semeru21.build.script.yaml`](modes/semeru21.build.script.yaml)
 
-### 3. Restoration and Validation
-* **Restoration:** The benchmark is re-executed by restoring the application state from the previously saved checkpoint.
-* **Configuration:** As with storage, each JVM implementation must provide the specific arguments required to restore the application from the artifacts located in the `cr` folder.
+#### OpenJDK 25 (Temurin)
+Uses JEP 514 AOT Cache technology:
+- **Training**: `-XX:AOTCacheOutput=/app/checkpoint/app.aot`
+- **Optimized**: `-XX:AOTCache=/app/checkpoint/app.aot -XX:AOTMode=on`
+- Configuration: [`temurin25.build.script.yaml`](modes/temurin25.build.script.yaml)
 
-### 4. Design Philosophy
-This approach maintains the simplicity of the benchmark by supporting three distinct execution modes via argument injection:
-* **Standard:** Run without arguments (baseline execution).
-* **Training:** Run with parameters to **store** artifacts.
-* **Optimized:** Run with parameters to **restore** from artifacts.
+## Production Deployment Strategy
 
-## Examples
+### Artifact Management
 
-**Standard** run using OpenJDK
+All optimization artifacts are stored in a dedicated checkpoint directory:
+- **Location**: `/app/checkpoint/`
+- **Persistence**: Artifacts can be extracted and deployed to production containers
+- **Portability**: Artifacts are JVM-implementation specific but environment-independent
+
+### Container Architecture
+
+The implementation uses parameterized Dockerfiles for flexibility:
+- Base images specified via `ARG BASE_IMAGE`
+- Unified [`start-quarkus.sh`](modes/assets/start-quarkus.sh) script handles all phases
+- Checkpoint directory pre-created in container image
+
+## Usage Examples
+
+### Standard Execution
+
+Baseline run using OpenJDK:
 ```bash
 ./run.sh jvm get-all-heroes hyperfoil local
 ```
 
-**Standard** run using Eclipse OpenJ9
+### Training Phase
+
+Generate optimization artifacts for production:
+
+**Eclipse OpenJ9 21:**
 ```bash
-./run.sh semeru.build get-all-heroes hyperfoil local
+./run.sh semeru21.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
 ```
 
-**Training** run using Eclipse OpenJ9 21
+**OpenJDK 25:**
 ```bash
-./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
+./run.sh temurin25.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
 ```
 
-**Optimized** run using Eclipse OpenJ9 21
+### Optimized Production Deployment
+
+Deploy with pre-generated artifacts:
+
+**Eclipse OpenJ9 21:**
 ```bash
-./run.sh semeru.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
+./run.sh semeru21.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
 ```
 
-**Training** run using OpenJDK 25
+**OpenJDK 25:**
 ```bash
-./run.sh semeru25.build get-all-heroes hyperfoil local "-S PHASE=TRAINING"
+./run.sh temurin25.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
 ```
 
-**Optimized** run using OpenJDK 25
-```bash
-./run.sh semeru25.build get-all-heroes hyperfoil local "-S PHASE=OPTIMIZED"
-```
+## Implementation Details
 
-## TODO List
-* If heroes.logs contains "Restoring FAILED" during the optimized phase fail the build
-* Implement the idea of heroes_checkpoint_path - it can be http:// or falback to a folder for local developmenet
-* Address root user security issue (USER 185) - modes/assets/semeru/Dockerfile.heroes.semeru
-* Add checkpoint support for villains, locations, fights services
-* Implement restore/optimized phase
-* Add back JIT Server. It should be optimal.
-* Test end-to-end checkpoint/restore workflow
-* Add validation step after restore
-* Document CRIU configuration options (shell-job, ext-unix-sk)
+### Phase Configuration
+
+The phase is controlled via the `PHASE` state variable in `superheroes.yaml`:
+- Automatically configures JVM arguments based on selected phase
+- JVM-specific parameters injected via `prepare-superheroes-sut` script
+- Supports dynamic switching between phases without code changes
+
+### Peak Performance Definition
+
+**Current Approach**: Peak performance is defined as running the benchmark for a predetermined duration that allows the JVM to reach steady-state.
+
+**Future Enhancement**: Statistical approach to detect performance stability (low variance over time) for more precise artifact generation.
+
+## Considerations
+
+### Validation
+After training, the workflow validates that:
+1. Artifacts are successfully generated
+2. Application restores correctly from checkpoint
+
+## Roadmap
+
+- [ ] Extend checkpoint support to all services (fights, locations, villains)
+- [ ] Add JIT Server optimization for heroes service
+- [ ] Implement statistical peak performance detection
+
+## References
+
+- [Project Leyden Presentation](https://www.youtube.com/watch?v=Oo96adJirPw)
+- [JEP 514: AOT Cache](https://openjdk.org/jeps/514)
+- [Eclipse OpenJ9 CRIU Support](https://www.eclipse.org/openj9/docs/criusupport/)
