@@ -22,10 +22,10 @@ scripts:
   - script: clone-superheroes
   # override Dockerfiles, e.g., Dockerfile or whatever else you need
   # TODO(user): change the filenames in according to what you need to override, either native or jvm
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.heroes.native /tmp
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.villains.native /tmp
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.locations.native /tmp
-  - upload: ${{ENV.SCRIPT_DIR}}/assets/${{CONTAINERFILES_FOLDER}}/Dockerfile.fights.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.heroes.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.villains.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.locations.native /tmp
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.fights.native /tmp
 
   - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
   - sh: cp /tmp/Dockerfile.heroes.native rest-heroes/src/main/docker/Dockerfile.native
@@ -70,6 +70,5 @@ states:
   SUPERHEROES_CUSTOM_TAG: local-main
 
   # change these values
-  CONTAINERFILES_FOLDER: CHANGE_ME
   CONTAINER_RUNTIME_PARAMS:
   JAVA_VERSION: CHANGE_ME

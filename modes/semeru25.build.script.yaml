@@ -1,9 +1,0 @@
-# IBM Semeru OpenJDK 25 Build Configuration
-# This file only contains overrides - it reuses all scripts from semeru.build.script.yaml
-# Usage: qDup will merge this with semeru.build.script.yaml when both are specified
-
-states:
-  IMAGE_REPOSITORY: my-base
-  BASE_IMAGE: java25
-  JAVA_VERSION: 25.0.1-tem
-  SUPERHEROES_CUSTOM_TAG: temurin

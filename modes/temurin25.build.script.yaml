@@ -1,0 +1,11 @@
+# This file only contains overrides - it reuses all scripts from custom.jvm.build.script.yaml
+scripts:
+  prepare-images-super:
+  - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi9.minimal /tmp
+  - sh: docker build -f /tmp/Dockerfile.ubi9.minimal -t my-base:java25 .
+
+states:
+  IMAGE_REPOSITORY: my-base
+  BASE_IMAGE: java25
+  JAVA_VERSION: 25.0.1-tem
+  SUPERHEROES_CUSTOM_TAG: temurin
