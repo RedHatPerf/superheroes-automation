@@ -1,4 +1,5 @@
-FROM icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 USER 0
 
 # Install dumb-init
@@ -45,12 +46,8 @@ ENV QUARKUS_DATASOURCE_PASSWORD=superbad
 ENV QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
 ENV QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${DS_SERVER}:4317
 
-COPY --chown=185:root src/main/docker/pidplus.sh /app/pidplus.sh
-COPY --chown=185:root src/main/docker/restore.sh /app/restore.sh
 COPY --chown=185:root src/main/docker/start-quarkus.sh /app/start-quarkus.sh
 
-RUN chmod +x restore.sh
-RUN chmod +x pidplus.sh
 RUN chmod +x start-quarkus.sh
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
@@ -69,7 +66,6 @@ ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=or
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
 #Create Checkpoint
-RUN ./start-quarkus.sh http://localhost:8084/api/villains
 
-CMD ["bash", "start-quarkus.sh", "http://localhost:8084/api/villains"]
+CMD ["bash", "start-quarkus.sh"]
 

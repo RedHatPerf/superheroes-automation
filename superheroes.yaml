@@ -39,6 +39,48 @@ scripts:
   - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
   - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
 
+  prepare-superheroes-sut:
+  - read-state: ${{PHASE}}
+    then:
+      - regex: "TRAINING"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCCheckpointTo=/app/checkpoint "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+              # https://openjdk.org/jeps/514
+              - regex: "25.0.1-tem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:AOTCacheOutput=/app/checkpoint/app.aot "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+      - regex: "OPTIMIZED"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -XX:CRaCRestoreFrom=/app/checkpoint "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+              # https://openjdk.org/jeps/514
+              - regex: "25.0.1-tem"
+                then:
+                - js: |
+                    (input,state)=>{
+                      state["JAVA_OPTS_APPEND"] += " -Xlog:aot -XX:AOTCache=/app/checkpoint/app.aot -XX:AOTMode=on "
+                      return '${{JAVA_OPTS_APPEND}}'
+                    }
+
   ###### OPENTELEMETRY ######
   start-jaeger:
   - log: starting Jaeger...
@@ -108,7 +150,7 @@ scripts:
         --cpuset-cpus ${{JIT_SERVER_CPU}}
         -p ${{JIT_SERVER_PORT}}:38400
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{JIT_SERVER_IMAGE:'icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal'}}
+        ${{JIT_SERVER_IMAGE}}
         jitserver -XX:+JITServerLogConnections
       then:
       - regex: (?<HOST.JIT_SERVER_POD_ID>[a-f0-9]{64}$)
@@ -135,6 +177,7 @@ scripts:
   start-heroes-db:
   - js: ${{HEROES_ENABLED}}
     then:
+    - sh: echo "SELECT 'My initialization script finished successfully' AS status;" >> ${{SUPERHEROES_FOLDER}}/rest-heroes/deploy/db-init/initialize-tables.sql
     - log: starting Heroes database...
     - sh: >
         ${{CONTAINER_RUNTIME}} run -d
@@ -152,11 +195,9 @@ scripts:
     - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_DB_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
-      - regex: database system is ready to accept connections
+      - regex: My initialization script finished successfully
         then:
-        - countdown: db_heroes_ready 2
-          then:
-          - ctrlC
+        - ctrlC
       timer:
         1m: # max wait time
         - abort: Heroes db has not been ready in 1 min
@@ -169,23 +210,40 @@ scripts:
     - wait-for: OTEL_READY
     - log: starting Heroes service...
     - sh: >
-        ${{CONTAINER_RUNTIME}} run -d
-        --name rest-heroes
-        ${{ CONTAINER_RUNTIME_PARAMS }}
-        --memory ${{HEROES_REST_MEMORY}}
-        --cpuset-cpus ${{HEROES_REST_CPU}}
-        ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }}
-        -p ${{HEROES_REST_PORT}}:8083
-        -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
-        -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
-        -e QUARKUS_DATASOURCE_USERNAME=superman
-        -e QUARKUS_DATASOURCE_PASSWORD=superman
-        -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
-        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
-        ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
-        ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
+        COMMON_ARGS=(
+          -d
+          --name rest-heroes
+          ${{ CONTAINER_RUNTIME_PARAMS }}
+          --memory ${{HEROES_REST_MEMORY}}
+          --cpuset-cpus ${{HEROES_REST_CPU}}
+          ${{= ${{MAP_USER_GROUP:false}} ? '--user "$(id -u):$(id -g)" ' : '' }}
+          -p ${{HEROES_REST_PORT}}:8083
+          -e QUARKUS_DATASOURCE_REACTIVE_URL=postgresql://${{HEROES_DB_HOSTNAME}}:${{HEROES_DB_PORT}}/heroes_database
+          -e QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
+          -e QUARKUS_DATASOURCE_USERNAME=superman
+          -e QUARKUS_DATASOURCE_PASSWORD=superman
+          -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+          -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+          -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
+          ${{= getNetwork( '${{SUT_SERVER}}' ) }}
+        )
+        
+        if [ "${{PHASE}}" = "TRAINING" ]; then
+        
+          ${{CONTAINER_RUNTIME}} stop rest-heroes-commit || true
+          ${{CONTAINER_RUNTIME}} rm -f rest-heroes-commit || true
+        
+          IMAGE_NAME="${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}"
+          CMD_SUFFIX="${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}"
+        
+        elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
+        
+          IMAGE_NAME="rest-heroes-commit"
+          CMD_SUFFIX=""
+        
+        fi
+        
+        ${{CONTAINER_RUNTIME}} run "${COMMON_ARGS[@]}" $IMAGE_NAME $CMD_SUFFIX
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
         else:
@@ -194,7 +252,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.HEROES_REST_POD_ID}}
           STATE_PID: HOST.HEROES_REST_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.HEROES_REST_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.HEROES_REST_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -333,6 +391,7 @@ scripts:
         -e QUARKUS_DATASOURCE_PASSWORD=locations
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_LOCATION_GRPC__LEVEL=WARN
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
@@ -466,6 +525,7 @@ scripts:
         -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
         -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
         -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_FIGHT_SERVICE__LEVEL=WARN
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
@@ -516,8 +576,56 @@ scripts:
       command: rm -Rf ${{SUPERHEROES_FOLDER:/tmp/quarkus-super-heroes}}
       ignore-exit-code: true
 
+  save-sut-artifacts:
+  - wait-for: HF_BENCHMARK_TERMINATED
+  - sh: sleep 5
+  - read-state: ${{PHASE}}
+    then:
+      - regex: "TRAINING"
+        then:
+          - read-state: ${{JAVA_VERSION}}
+            then:
+              - regex: "21.0.9-sem"
+                then:
+                  - sh: rm -f close_sockets.txt checkpoint.txt
+                  - upload: ${{ENV.SCRIPT_DIR}}/modes/assets/semeru/close_sockets.sh /tmp/
+                  - sh: ${{CONTAINER_RUNTIME}} exec -i -u 0 ${{HOST.HEROES_REST_POD_ID}} sh < /tmp/close_sockets.sh > close_sockets.txt 2>&1
+                  # it will stop the application by default
+                  - sh: ${{CONTAINER_RUNTIME}} exec ${{HOST.HEROES_REST_POD_ID}} /bin/sh -c "ps -ef; jcmd /deployments/quarkus-run.jar JDK.checkpoint" > checkpoint.txt 2>&1
+                  - queue-download: close_sockets.txt
+                  - queue-download: checkpoint.txt
+  # wait until JDK.checkpoint is completed - TODO find other way
+  - sh: sleep 60
+    # Stop the containers
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
+  - sh: sleep 60
+  - js: ${{HEROES_ENABLED}}
+    then:
+      - read-state: ${{HOST.HEROES_REST_POD_ID}}
+        then:
+          - read-state: ${{PHASE}}
+            then:
+              - regex: "TRAINING"
+                then:
+                  - set-state: CR_FOLDER checkpoint
+                  - sh: rm -fR ${{CR_FOLDER}}
+                  - queue-download: ${{CR_FOLDER}}
+                  - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/app/${{CR_FOLDER}} ./${{CR_FOLDER}}
+                  - sh: if [ ! -d "${{CR_FOLDER}}" ]; then echo "MISSING"; elif [ -z "$(find "${{CR_FOLDER}}" -mindepth 1 -maxdepth 1)" ]; then echo "EMPTY"; else echo "NOT_EMPTY"; fi
+                    then:
+                      - regex: "MISSING"
+                        then:
+                          - abort: ${{CR_FOLDER}} folder is missing
+                      - regex: "^EMPTY$"
+                        then:
+                          - abort: ${{CR_FOLDER}} folder is empty
+
   cleanup-datasources:
+  - wait-for: CLEANUP_SUT_FINISHED
   - script: cleanup-superheroes-repo
+  # safest workflow. stop -> collect logs -> collect artifacts -> rm
+  # Stop the container
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - read-state: ${{HOST.OTEL_POD_ID}}
     then:
     - queue-download: ${{OTEL_LOGS_FILE}}
@@ -567,45 +675,52 @@ scripts:
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_DB_POD_ID}} > ${{LOCATIONS_DB_LOGS_FILE}}
         silent: true
 
-  # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.KAFKA_POD_ID:}} ${{HOST.APICURIO_POD_ID:}} ${{HOST.FIGHTS_DB_POD_ID:}} ${{HOST.VILLAINS_DB_POD_ID:}} ${{HOST.HEROES_DB_POD_ID:}} ${{HOST.LOCATIONS_DB_POD_ID:}} ${{HOST.JAEGER_POD_ID:}} ${{HOST.OTEL_POD_ID:}}
+  # then, force and remove all pods if needed
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
+  # kill leftovers ports
+  - sh: lsof -ti:${{FIGHTS_DB_PORT}},${{APICURIO_PORT}},${{VILLAINS_DB_PORT}},${{HEROES_DB_PORT}},${{LOCATIONS_DB_PORT}},${{OTEL_RECEIVER_PORT}},${{KAFKA_PORT}} | xargs -r kill -9
 
-
+  # sut - cleanup
   cleanup-superheroes:
+  - js: ${{HEROES_ENABLED}}
+    then:
+      - read-state: ${{HOST.HEROES_REST_POD_ID}}
+        then:
+          - sh: rm -fR ${{HEROES_REST_LOGS_FILE}} app.log
+          - queue-download: ${{HEROES_REST_LOGS_FILE}}
+          - queue-download: app.log
+          - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}} 2>&1
+          - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log ./app.log
+
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
       then:
       - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}} 2>&1
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
       then:
       - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}} 2>&1
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}}
-  - js: ${{HEROES_ENABLED}}
-    then:
-    - read-state: ${{HOST.HEROES_REST_POD_ID}}
-      then:
-      - queue-download: ${{HEROES_REST_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} > ${{HEROES_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}} 2>&1
   - js: ${{JIT_SERVER_ENABLED}}
     then:
     - read-state: ${{HOST.JIT_SERVER_POD_ID}}
       then:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}}
-
-  # remove all pods
-  - sh: ${{CONTAINER_RUNTIME}} rm -f ${{HOST.FIGHTS_REST_UI_ID:}} ${{HOST.FIGHTS_REST_POD_ID:}} ${{HOST.VILLAINS_REST_POD_ID:}} ${{HOST.HEROES_REST_POD_ID:}} ${{HOST.LOCATIONS_GRPC_POD_ID:}} ${{HOST.JIT_SERVER_POD_ID:}}
-
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} > ${{JIT_SERVER_LOGS_FILE}} 2>&1
+  # then, force and remove all pods if needed
+  - sh: docker commit rest-heroes rest-heroes-commit || true
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
+  - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
+  - signal: CLEANUP_SUT_FINISHED
 states:
   # container exec
   CONTAINER_RUNTIME: docker
