@@ -13,7 +13,7 @@ scripts:
   clone-superheroes:
   # clone the repository and checkout the proper commit/branch
   - sh: if [ -d ${{SUPERHEROES_BUILD_FOLDER}} ]; then rm -rf ${{SUPERHEROES_BUILD_FOLDER}}; fi 
-  - sh: git clone --depth 1 ${{SUPERHEROES_BUILD_REPO}} ${{SUPERHEROES_BUILD_FOLDER}}
+  - sh: git clone --quiet --depth 1 ${{SUPERHEROES_BUILD_REPO}} ${{SUPERHEROES_BUILD_FOLDER}}
   - sh: cd ${{SUPERHEROES_BUILD_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_BUILD_COMMIT:main}} && git checkout ${{SUPERHEROES_BUILD_COMMIT:main}}
 
 # override container images states with the one created as part of this test
@@ -41,7 +41,7 @@ scripts:
     with:
       JAVA_VERSION: 23.1.5.r21-mandrel
   - sh: >
-      ./mvnw clean package -DskipTests -Pnative
+      ./mvnw --no-transfer-progress clean package -DskipTests -Pnative
       -Dmaven.compiler.release=21
       -Dquarkus.http.host=0.0.0.0
       -Dquarkus.native.container-build=true

@@ -36,7 +36,7 @@ scripts:
   prepare-superheroes:
   # clone the repository and checkout the proper commit/branch
   - sh: if [ -d ${{SUPERHEROES_FOLDER}} ]; then rm -rf ${{SUPERHEROES_FOLDER}}; fi 
-  - sh: git clone --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
+  - sh: git clone --quiet --depth 1 ${{SUPERHEROES_REPO}} ${{SUPERHEROES_FOLDER}}
   - sh: cd ${{SUPERHEROES_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_COMMIT:main}} && git checkout ${{SUPERHEROES_COMMIT:main}}
 
   ###### OPENTELEMETRY ######
