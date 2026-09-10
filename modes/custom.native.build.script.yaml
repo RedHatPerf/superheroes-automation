@@ -41,7 +41,7 @@ scripts:
     with:
       JAVA_VERSION: 23.1.5.r21-mandrel
   - sh: >
-      ./mvnw clean package -DskipTests -Pnative
+      ./mvnw --no-transfer-progress clean package -DskipTests -Pnative
       -Dmaven.compiler.release=21
       -Dquarkus.http.host=0.0.0.0
       -Dquarkus.native.container-build=true

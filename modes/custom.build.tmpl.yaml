@@ -40,7 +40,7 @@ scripts:
   
   # TODO(user): change the build script in according to the build you are willing to do
   - sh: >
-      ./mvnw clean package -DskipTests -Pnative
+      ./mvnw --no-transfer-progress clean package -DskipTests -Pnative
       -Dmaven.compiler.release=21
       -Dquarkus.http.host=0.0.0.0
       -Dquarkus.native.container-build=true
