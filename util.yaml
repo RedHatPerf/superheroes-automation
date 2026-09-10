@@ -17,20 +17,21 @@ scripts:
       command: sdk help
       prompt:
         "Would you like to upgrade now? (Y/n): ": "Y"
-  - regex: ".*command not found"
     then:
-    - sh: curl -s "https://get.sdkman.io" | bash
+    - regex: ".*command not found"
       then:
-      - regex: "Enjoy"
-        else:
-        - abort: failed to install SDKMAN
-    - sh: source "$HOME/.sdkman/bin/sdkman-init.sh"
-    # else:
-    # - sh: sdk selfupdate force
-    #   then:
-    #   - regex: "Successfully upgraded SDKMAN"
-    #     else:
-    #     - abort: failed to upgrade SDKMAN
+      - sh: curl -s "https://get.sdkman.io" | bash
+        then:
+        - regex: "Enjoy"
+          else:
+          - abort: failed to install SDKMAN
+      - sh: source "$HOME/.sdkman/bin/sdkman-init.sh"
+      # else:
+      # - sh: sdk selfupdate force
+      #   then:
+      #   - regex: "Successfully upgraded SDKMAN"
+      #     else:
+      #     - abort: failed to upgrade SDKMAN
   - sh:
       command: sdk version
       prompt:
@@ -66,9 +67,10 @@ scripts:
   # CONTAINER_ID: the id of the running container
   # STATE_PID: the state where the pid should be saved to
   - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{CONTAINER_ID}}
-  - regex: (^[1-9][0-9]*$)
     then:
-    - set-state: ${{STATE_PID}}
+    - regex: (^[1-9][0-9]*$)
+      then:
+      - set-state: ${{STATE_PID}}
   # if we have wrappers as entrypoint we should find the java process
   - js: ${{IS_ENTRYPOINT_WRAPPER}}
     then:
@@ -83,9 +85,10 @@ scripts:
             then:
             - set-state: ${{STATE_PID}}
             - sh: ps --pid ${{${{STATE_PID}}}} -o cmd=
-            - regex: java
               then:
-              - signal: stop
+              - regex: java
+                then:
+                - signal: stop
   # inspect the pid
   - sh: ps -p ${{${{STATE_PID}}}}
 
