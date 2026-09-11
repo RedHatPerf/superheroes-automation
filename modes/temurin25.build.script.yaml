@@ -2,10 +2,10 @@
 scripts:
   prepare-images-super:
   - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi9.minimal /tmp
-  - sh: docker build -f /tmp/Dockerfile.ubi9.minimal -t my-base:java25 .
+  - sh: docker build -f /tmp/Dockerfile.ubi9.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
 
 states:
   IMAGE_REPOSITORY: my-base
-  BASE_IMAGE: java25
-  JAVA_VERSION: 25.0.1-tem
+  BASE_IMAGE: java25-tem
+  JAVA_VERSION: 25.0.4-tem
   SUPERHEROES_CUSTOM_TAG: temurin
