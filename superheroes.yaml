@@ -715,6 +715,7 @@ scripts:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.VILLAINS_REST_POD_ID}}:/deployments/app.log - | cat
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} > ${{VILLAINS_REST_LOGS_FILE}} 2>&1
   - js: ${{JIT_SERVER_ENABLED}}
     then:
