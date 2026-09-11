@@ -333,7 +333,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.VILLAINS_REST_POD_ID}}
           STATE_PID: HOST.VILLAINS_REST_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.VILLAINS_REST_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.HEROES_REST_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
