@@ -228,16 +228,22 @@ scripts:
           ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         )
         
-        if [ "${{PHASE}}" = "TRAINING" ]; then
+        if [ "${{PHASE}}" = "STANDARD" ]; then
+        
+          IMAGE_NAME="${{HEROES_REST_IMAGE}}"
+          CMD_SUFFIX=""
+        
+        elif [ "${{PHASE}}" = "TRAINING" ]; then
         
           ${{CONTAINER_RUNTIME}} stop rest-heroes-commit || true
           ${{CONTAINER_RUNTIME}} rm -f rest-heroes-commit || true
         
-          IMAGE_NAME="${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}"
+          IMAGE_NAME="${{HEROES_REST_IMAGE}}"
           CMD_SUFFIX="${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}"
         
         elif [ "${{PHASE}}" = "OPTIMIZED" ]; then
         
+          # rest-heroes-commit was generated in the TRAINING phase
           IMAGE_NAME="rest-heroes-commit"
           CMD_SUFFIX=""
         
