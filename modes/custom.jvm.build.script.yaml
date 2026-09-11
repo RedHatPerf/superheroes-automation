@@ -55,7 +55,7 @@ scripts:
   # TODO(user): change the build script in according to the build you are willing to do
   - sh: >
       ./mvnw --no-transfer-progress clean package -DskipTests
-      -Dmaven.compiler.release=21
+      -Dmaven.compiler.release=25
       -Dquarkus.http.host=0.0.0.0
       -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
   - sh: >
