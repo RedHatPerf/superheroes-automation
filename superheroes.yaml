@@ -411,7 +411,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.LOCATIONS_GRPC_POD_ID}}
           STATE_PID: HOST.LOCATIONS_GRPC_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.LOCATIONS_GRPC_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.LOCATIONS_GRPC_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -710,6 +710,7 @@ scripts:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
       then:
       - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - | cat
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} > ${{LOCATIONS_GRPC_LOGS_FILE}} 2>&1
   - js: ${{VILLAINS_ENABLED}}
     then:
