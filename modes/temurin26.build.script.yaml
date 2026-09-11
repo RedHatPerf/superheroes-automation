@@ -2,7 +2,7 @@
 scripts:
   prepare-images-super:
   - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi9.minimal /tmp
-  - sh: docker build -f /tmp/Dockerfile.ubi9.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
+  - sh: ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi9.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
 
 states:
   IMAGE_REPOSITORY: localhost/my-base
