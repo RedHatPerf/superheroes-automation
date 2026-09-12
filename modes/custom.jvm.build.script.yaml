@@ -114,6 +114,3 @@ states:
   # checkout the latest pre-release version here https://github.com/async-profiler/async-profiler/releases/tag/nightly
   ASPROF_VERSION: 3.0-d1498a6
   ASPROF_RELEASE_URL: https://github.com/async-profiler/async-profiler/releases/download/nightly/async-profiler-${{ASPROF_VERSION}}-linux-x64.tar.gz
-
-  # STANDARD, TRAINING, OPTIMIZED
-  PHASE: STANDARD

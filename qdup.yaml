@@ -70,3 +70,5 @@ roles:
       - cleanup-profiling
 
 states:
+  # STANDARD, TRAINING, OPTIMIZED
+  PHASE: STANDARD
