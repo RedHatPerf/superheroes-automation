@@ -84,7 +84,7 @@ else
 fi
 
 # Special handling for custom jvm builds
-if [ "$MODE" = "semeru21.build" ] || [ "$MODE" = "temurin25.build" ] || [ "$MODE" = "temurin26.build" ]; then
+if [ "$MODE" = "semeru21.build" ] || [ "$MODE" = "temurin25.build" ] || [ "$MODE" = "temurin26.build" ] || [ "$MODE" = "semeru26.build" ]; then
   QDUP_CMD="$QDUP_CMD modes/custom.jvm.build.script.yaml "
 fi
 
