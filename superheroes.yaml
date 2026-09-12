@@ -532,7 +532,8 @@ scripts:
         -e QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${{VILLAINS_REST_HOSTNAME}}:${{VILLAINS_REST_PORT}}
         -e MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL="http://${{APICURIO_HOSTNAME}}:${{APICURIO_PORT}}/apis/registry/v2"
         -e KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:${{KAFKA_PORT}}
-        -e QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
+        -e QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL=grpc
         -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_FIGHT_SERVICE__LEVEL=WARN
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
@@ -546,7 +547,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.FIGHTS_REST_POD_ID}}
           STATE_PID: HOST.FIGHTS_REST_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.FIGHTS_REST_POD_ID}}
+    - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.FIGHTS_REST_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
@@ -705,6 +706,7 @@ scripts:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
       then:
       - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - | cat
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} > ${{FIGHTS_REST_LOGS_FILE}} 2>&1
   - js: ${{LOCATIONS_ENABLED}}
     then:
