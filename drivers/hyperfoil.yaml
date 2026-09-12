@@ -18,7 +18,7 @@ scripts:
     then:
     - log: saving hyperfoil all.json as state
     - sh: cat ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{RUN.HF_RUN_ID}}/all.json
-      silent: false
+      silent: true
       then:
       - js: |
           (input, state) => { 
