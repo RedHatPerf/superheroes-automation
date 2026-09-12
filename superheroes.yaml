@@ -629,6 +629,9 @@ scripts:
                         then:
                           - abort: ${{CR_FOLDER}} folder is empty
 
+  remove-datasources-containers:
+    - sh: sudo podman ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r sudo podman rm -f
+
   cleanup-datasources:
   - wait-for: CLEANUP_SUT_FINISHED
   - script: cleanup-superheroes-repo
@@ -688,6 +691,9 @@ scripts:
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   # kill leftovers ports
   - sh: lsof -ti:${{FIGHTS_DB_PORT}},${{APICURIO_PORT}},${{VILLAINS_DB_PORT}},${{HEROES_DB_PORT}},${{LOCATIONS_DB_PORT}},${{OTEL_RECEIVER_PORT}},${{KAFKA_PORT}} | xargs -r kill -9
+
+  cleanup-superheroes-containers:
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
 
   # sut - cleanup
   cleanup-superheroes:
