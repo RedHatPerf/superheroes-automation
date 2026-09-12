@@ -25,6 +25,7 @@ scripts:
             let { agents, connections, sessions, ...result_stripped } = input
             state.HF_REPORT_ALL = result_stripped
           }
+    - set-state: RUN.HF_REPORT_ALL ${{HF_REPORT_ALL}}
   - sh: 
       command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
       ignore-exit-code: true
