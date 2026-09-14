@@ -704,40 +704,60 @@ scripts:
       then:
         - queue-download: ${{HEROES_REST_LOGS_FILE}}
         - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_REST_POD_ID}} 2>&1 | tee ${{HEROES_REST_LOGS_FILE}} > /dev/null
-        - sh: "echo '-----------------' >> ${{HEROES_REST_LOGS_FILE}}"
-        - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log - >> ${{HEROES_REST_LOGS_FILE}}
+        - read-state: ${{IS_NATIVE}}
+          then:
+            - regex: "false"
+              then:
+                - sh: "echo '-----------------' >> ${{HEROES_REST_LOGS_FILE}}"
+                - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log - >> ${{HEROES_REST_LOGS_FILE}}
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
       then:
       - queue-download: ${{FIGHTS_REST_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_REST_POD_ID}} 2>&1 | tee ${{FIGHTS_REST_LOGS_FILE}} > /dev/null
-      - sh: "echo '-----------------' >> ${{FIGHTS_REST_LOGS_FILE}}"
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.FIGHTS_REST_POD_ID}}:/deployments/app.log - >> ${{FIGHTS_REST_LOGS_FILE}}
+      - read-state: ${{IS_NATIVE}}
+        then:
+          - regex: "false"
+            then:
+              - sh: "echo '-----------------' >> ${{FIGHTS_REST_LOGS_FILE}}"
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.FIGHTS_REST_POD_ID}}:/deployments/app.log - >> ${{FIGHTS_REST_LOGS_FILE}}
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
       then:
       - queue-download: ${{LOCATIONS_GRPC_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_GRPC_POD_ID}} 2>&1 | tee ${{LOCATIONS_GRPC_LOGS_FILE}} > /dev/null
-      - sh: "echo '-----------------' >> ${{LOCATIONS_GRPC_LOGS_FILE}}"
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - >> ${{LOCATIONS_GRPC_LOGS_FILE}}
+      - read-state: ${{IS_NATIVE}}
+        then:
+          - regex: "false"
+            then:
+              - sh: "echo '-----------------' >> ${{LOCATIONS_GRPC_LOGS_FILE}}"
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - >> ${{LOCATIONS_GRPC_LOGS_FILE}}
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
       then:
       - queue-download: ${{VILLAINS_REST_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_REST_POD_ID}} 2>&1 | tee ${{VILLAINS_REST_LOGS_FILE}} > /dev/null
-      - sh: "echo '-----------------' >> ${{VILLAINS_REST_LOGS_FILE}}"
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.VILLAINS_REST_POD_ID}}:/deployments/app.log - >> ${{VILLAINS_REST_LOGS_FILE}}
+      - read-state: ${{IS_NATIVE}}
+        then:
+          - regex: "false"
+            then:
+              - sh: "echo '-----------------' >> ${{VILLAINS_REST_LOGS_FILE}}"
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.VILLAINS_REST_POD_ID}}:/deployments/app.log - >> ${{VILLAINS_REST_LOGS_FILE}}
   - js: ${{JIT_SERVER_ENABLED}}
     then:
     - read-state: ${{HOST.JIT_SERVER_POD_ID}}
       then:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} 2>&1 | tee ${{JIT_SERVER_LOGS_FILE}} > /dev/null
-      - sh: "echo '-----------------' >> ${{JIT_SERVER_LOGS_FILE}}"
-      - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.JIT_SERVER_POD_ID}}:/deployments/app.log - >> ${{JIT_SERVER_LOGS_FILE}}
+      - read-state: ${{IS_NATIVE}}
+        then:
+          - regex: "false"
+            then:
+              - sh: "echo '-----------------' >> ${{JIT_SERVER_LOGS_FILE}}"
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.JIT_SERVER_POD_ID}}:/deployments/app.log - >> ${{JIT_SERVER_LOGS_FILE}}
   # then, force and remove all pods if needed
   - sh: docker commit rest-heroes rest-heroes-commit || true
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
