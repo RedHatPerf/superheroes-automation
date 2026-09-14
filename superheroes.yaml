@@ -129,7 +129,6 @@ scripts:
       else:
       - abort: failed to capture pod id for Opentelemetry
   - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.OTEL_POD_ID}}
-    silent: true # prevent logs to be printed in the terminal
     watch:
     - regex: Begin running and processing data
       then:
@@ -637,14 +636,11 @@ scripts:
   cleanup-datasources:
   - wait-for: CLEANUP_SUT_FINISHED
   - script: cleanup-superheroes-repo
-  # safest workflow. stop -> collect logs -> collect artifacts -> rm
-  # Stop the container
-  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   - read-state: ${{HOST.OTEL_POD_ID}}
     then:
     - queue-download: ${{OTEL_LOGS_FILE}}
     - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.OTEL_POD_ID}} > ${{OTEL_LOGS_FILE}}
-      silent: true
+      silent: false
   - read-state: ${{HOST.JAEGER_POD_ID}}
     then:
     - queue-download: ${{JAEGER_LOGS_FILE}}
@@ -688,7 +684,8 @@ scripts:
       - queue-download: ${{LOCATIONS_DB_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_DB_POD_ID}} > ${{LOCATIONS_DB_LOGS_FILE}}
         silent: true
-
+  # Stop the container
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   # then, force and remove all pods if needed
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   # kill leftovers ports
