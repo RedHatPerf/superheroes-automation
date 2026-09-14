@@ -7,7 +7,7 @@ receivers:
 
 exporters:
   otlp/jaeger:
-    endpoint: localhost:4317
+    endpoint: localhost:4318
     tls:
       insecure: true
 
