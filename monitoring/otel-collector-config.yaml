@@ -13,6 +13,8 @@ exporters:
 
 processors:
   batch:
+    send_batch_size: 1000
+    timeout: 1s
 
 extensions:
   health_check:
