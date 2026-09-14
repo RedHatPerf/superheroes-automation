@@ -44,13 +44,14 @@ scripts:
     then:
     - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - queue-download: /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+    - queue-download: /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}_original.log
     - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
       - sh:
           # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
           # --user "$(id -u):$(id -g)"
-          command: pmap -x ${{${{MAIN_SERVICE_PID_STATE}}}} ${{PMAP_PARAMS:}} 2>/dev/null | grep total >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+          command: sudo pmap -x $(pgrep -P ${{${{MAIN_SERVICE_PID_STATE}}}}) ${{PMAP_PARAMS:}} 2>> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log | grep total >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
           ignore-exit-code: true
       - sleep: 1s
 
