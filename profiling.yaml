@@ -68,6 +68,7 @@ scripts:
     - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+        silent: true
     - sh:
         # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
         # --user "$(id -u):$(id -g)"
