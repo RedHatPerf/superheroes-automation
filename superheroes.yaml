@@ -638,52 +638,52 @@ scripts:
   - script: cleanup-superheroes-repo
   - read-state: ${{HOST.OTEL_POD_ID}}
     then:
+    - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.OTEL_POD_ID}} &> ${{OTEL_LOGS_FILE}}
+      silent: true
     - queue-download: ${{OTEL_LOGS_FILE}}
-    - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.OTEL_POD_ID}} > ${{OTEL_LOGS_FILE}}
-      silent: false
   - read-state: ${{HOST.JAEGER_POD_ID}}
     then:
-    - queue-download: ${{JAEGER_LOGS_FILE}}
-    - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JAEGER_POD_ID}} > ${{JAEGER_LOGS_FILE}}
+    - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JAEGER_POD_ID}} &> ${{JAEGER_LOGS_FILE}}
       silent: true
+    - queue-download: ${{JAEGER_LOGS_FILE}}
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.APICURIO_POD_ID}}
       then:
-      - queue-download: ${{APICURIO_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.APICURIO_POD_ID}} > ${{APICURIO_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.APICURIO_POD_ID}} &> ${{APICURIO_LOGS_FILE}}
         silent: true
+      - queue-download: ${{APICURIO_LOGS_FILE}}
     - read-state: ${{HOST.KAFKA_POD_ID}}
       then:
-      - queue-download: ${{KAFKA_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.KAFKA_POD_ID}} > ${{KAFKA_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.KAFKA_POD_ID}} &> ${{KAFKA_LOGS_FILE}}
         silent: true
+      - queue-download: ${{KAFKA_LOGS_FILE}}
     - read-state: ${{HOST.FIGHTS_DB_POD_ID}}
       then:
-      - queue-download: ${{FIGHTS_DB_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_DB_POD_ID}} > ${{FIGHTS_DB_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.FIGHTS_DB_POD_ID}} &> ${{FIGHTS_DB_LOGS_FILE}}
         silent: true
+      - queue-download: ${{FIGHTS_DB_LOGS_FILE}}
   - js: ${{HEROES_ENABLED}}
     then:
     - read-state: ${{HOST.HEROES_DB_POD_ID}}
       then:
-      - queue-download: ${{HEROES_DB_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_DB_POD_ID}} > ${{HEROES_DB_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.HEROES_DB_POD_ID}} &> ${{HEROES_DB_LOGS_FILE}}
         silent: true
+      - queue-download: ${{HEROES_DB_LOGS_FILE}}
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_DB_POD_ID}}
       then:
-      - queue-download: ${{VILLAINS_DB_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_DB_POD_ID}} > ${{VILLAINS_DB_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.VILLAINS_DB_POD_ID}} &> ${{VILLAINS_DB_LOGS_FILE}}
         silent: true
+      - queue-download: ${{VILLAINS_DB_LOGS_FILE}}
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_DB_POD_ID}}
       then:
-      - queue-download: ${{LOCATIONS_DB_LOGS_FILE}}
-      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_DB_POD_ID}} > ${{LOCATIONS_DB_LOGS_FILE}}
+      - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.LOCATIONS_DB_POD_ID}} &> ${{LOCATIONS_DB_LOGS_FILE}}
         silent: true
+      - queue-download: ${{LOCATIONS_DB_LOGS_FILE}}
   # Stop the container
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio" | xargs -r ${{CONTAINER_RUNTIME}} stop --timeout=30
   # then, force and remove all pods if needed
