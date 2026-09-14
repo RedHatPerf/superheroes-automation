@@ -9,22 +9,42 @@ scripts:
     - js: ${{HEROES_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.HEROES_REST_PID}}..
-      - sh: pidstat -p $(pgrep -P ${{HOST.HEROES_REST_PID}}) ${{PIDSTAT_PARAMS}} > /tmp/HEROES_pidstat_${{FILE_ID:all}}.log & export HEROES_PIDSTAT_PID="$!"
+      - sh:
+          # native image have a single pid. for container we should use the pid from pgrep
+          command: |
+            CONTAINER_PID=${{HOST.HEROES_REST_PID}}
+            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
+            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/HEROES_pidstat_${{FILE_ID:all}}.log & export HEROES_PIDSTAT_PID="$!"
       - queue-download: /tmp/HEROES_pidstat_${{FILE_ID:all}}.log
     - js: ${{VILLAINS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.VILLAINS_REST_PID}}..
-      - sh: pidstat -p $(pgrep -P ${{HOST.VILLAINS_REST_PID}}) ${{PIDSTAT_PARAMS}} > /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log & export VILLAINS_PIDSTAT_PID="$!"
+      - sh:
+          # native image have a single pid. for container we should use the pid from pgrep
+          command: |
+            CONTAINER_PID=${{HOST.VILLAINS_REST_PID}}
+            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
+            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log & export VILLAINS_PIDSTAT_PID="$!"
       - queue-download: /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log
     - js: ${{LOCATIONS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.LOCATIONS_GRPC_PID}}..
-      - sh: pidstat -p $(pgrep -P ${{HOST.LOCATIONS_GRPC_PID}}) ${{PIDSTAT_PARAMS}} > /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log & export LOCATIONS_PIDSTAT_PID="$!"
+      - sh:
+          # native image have a single pid. for container we should use the pid from pgrep
+          command: |
+            CONTAINER_PID=${{HOST.LOCATIONS_GRPC_PID}}
+            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
+            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log & export LOCATIONS_PIDSTAT_PID="$!"
       - queue-download: /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log
     - js: ${{FIGHTS_ENABLED}}
       then:
       - log: starting pidstat against ${{HOST.FIGHTS_REST_PID}}..
-      - sh: pidstat -p $(pgrep -P ${{HOST.FIGHTS_REST_PID}}) ${{PIDSTAT_PARAMS}} > /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log & export FIGHTS_PIDSTAT_PID="$!"
+      - sh:
+          # native image have a single pid. for container we should use the pid from pgrep
+          command: |
+            CONTAINER_PID=${{HOST.FIGHTS_REST_PID}}
+            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
+            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log & export FIGHTS_PIDSTAT_PID="$!"
       - queue-download: /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log
     - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
@@ -48,12 +68,16 @@ scripts:
     - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
       - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
-      - sh:
-          # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
-          # --user "$(id -u):$(id -g)"
-          command: sudo pmap -x $(pgrep -P ${{${{MAIN_SERVICE_PID_STATE}}}}) ${{PMAP_PARAMS:}} 2>> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log | grep total >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
-          ignore-exit-code: true
-      - sleep: 1s
+    - sh:
+        # NOTE: with docker this requires starting the containers with the same host user, this is now sets by default with
+        # --user "$(id -u):$(id -g)"
+        # native image have a single pid. for container we should use the pid from pgrep
+        command: |
+          CONTAINER_PID=${{${{MAIN_SERVICE_PID_STATE}}}}
+          TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
+          sudo pmap -x $TARGET_PID ${{PMAP_PARAMS:}} 2>> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log | grep total >> /tmp/${{MAIN_SERVICE_ID}}_rss_${{FILE_ID:all}}.log
+        ignore-exit-code: true
+    - sleep: 1s
 
   run-strace:
   # WAIT_FOR: which signal should it wait before starting 
