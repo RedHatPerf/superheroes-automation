@@ -8,9 +8,60 @@ BASE_BENCHMARKS_FOLDER="${CWD}/benchmarks"
 BASE_MODES_FOLDER="${CWD}/modes"
 BASE_DRIVERS_FOLDER="${CWD}/drivers"
 
+# Extract optional flags (may appear anywhere) before positional handling.
+# --java-version selects the host JDK (sdkman id, e.g. 25.0.4-tem) used by
+# image-build modes via sdk-select-java. Prebuilt jvm/native images ignore it.
+# --runtime-base-image selects the container base image (e.g. a JDK 26 image)
+# used by image-build modes via the RUNTIME_BASE_IMAGE state. Optional: when
+# unset, the mode's default base image is used.
+JAVA_VERSION=""
+RUNTIME_BASE_IMAGE=""
+POSITIONAL=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --java-version)
+      if [ -z "$2" ]; then
+        echo "Error: --java-version requires a value, e.g. --java-version 25.0.4-tem"
+        exit 1
+      fi
+      JAVA_VERSION="$2"
+      shift 2
+      ;;
+    --java-version=*)
+      JAVA_VERSION="${1#*=}"
+      if [ -z "$JAVA_VERSION" ]; then
+        echo "Error: --java-version requires a value, e.g. --java-version=25.0.4-tem"
+        exit 1
+      fi
+      shift
+      ;;
+    --runtime-base-image)
+      if [ -z "$2" ]; then
+        echo "Error: --runtime-base-image requires a value, e.g. --runtime-base-image docker.io/library/eclipse-temurin:26-jdk"
+        exit 1
+      fi
+      RUNTIME_BASE_IMAGE="$2"
+      shift 2
+      ;;
+    --runtime-base-image=*)
+      RUNTIME_BASE_IMAGE="${1#*=}"
+      if [ -z "$RUNTIME_BASE_IMAGE" ]; then
+        echo "Error: --runtime-base-image requires a value, e.g. --runtime-base-image=docker.io/library/eclipse-temurin:26-jdk"
+        exit 1
+      fi
+      shift
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${POSITIONAL[@]}"
+
 # Check if the correct number of arguments is provided
 if [ "$#" -lt 2 ] || [ "$#" -gt 5 ]; then
-  echo "Usage: $0 <native|jvm> <benchmark_folder> [driver] [local|remote] [benchmark_params]"
+  echo "Usage: $0 <native|jvm> <benchmark_folder> [driver] [local|remote] [benchmark_params] [--java-version <sdkman-id>] [--runtime-base-image <image>]"
   exit 1
 fi
 
@@ -65,12 +116,28 @@ else
   ADDITIONAL_ARGS=""
 fi
 
+# explicit flags win over any -S JAVA_VERSION/-S RUNTIME_BASE_IMAGE in benchmark_params
+if [ -n "$JAVA_VERSION" ]; then
+  ADDITIONAL_ARGS="$ADDITIONAL_ARGS -S JAVA_VERSION=$JAVA_VERSION"
+fi
+if [ -n "$RUNTIME_BASE_IMAGE" ]; then
+  ADDITIONAL_ARGS="$ADDITIONAL_ARGS -S RUNTIME_BASE_IMAGE=$RUNTIME_BASE_IMAGE"
+fi
+
+# --java-version/--runtime-base-image only affect build modes that select a
+# host JDK via sdk-select-java
+if [ -n "$JAVA_VERSION$RUNTIME_BASE_IMAGE" ] && ! grep -q "sdk-select-java" "$BASE_MODES_FOLDER/$MODE.script.yaml"; then
+  echo "Warning: --java-version/--runtime-base-image are ignored by the '$MODE' mode (it uses prebuilt images)." >&2
+fi
+
 echo Running benchmark with the following configuration:
 echo "  > Mode:             $MODE"
 echo "  > Benchmark:        $BENCHMARK_FOLDER"
 echo "  > Driver:           $DRIVER"
 echo "  > Server:           $LOCATION"
-echo "  > Benchmark params: $BENCHMARK_PARAMS"
+echo "  > Java version:     ${JAVA_VERSION:-(mode default)}"
+echo "  > Runtime image:    ${RUNTIME_BASE_IMAGE:-(mode default)}"
+echo "  > Benchmark params: $ADDITIONAL_ARGS"
 
 QDUP_CMD="jbang qDup@hyperfoil -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
 

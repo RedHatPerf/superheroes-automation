@@ -40,13 +40,15 @@ It uses qDup under the hood, therefore be sure you have properly installed it in
 
 ```bash
 $ ./run.sh
-Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] [benchmark_params]
+Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] [benchmark_params] [--java-version <sdkman-id>]
 ```
 
 * `<native|jvm|<custom>>`:  which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml). Modes are extensible by creating a custom (`/modes/<custom>.script.yaml`).
 * `<benchmark_folder>`:     which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
 * `[local|remote]`:         where you would like to start the services, either [`local`](/envs/local.env.yaml) to run on `localhost` or [`remote`](/envs/remote.env.yaml). Default is `local`.  **Please note:** for `remote` environments, the current user MUST have passwordless ssh access to any remote machines defined in `/envs/remote.env.yaml`.
 * `[additional_params]`:     any additional parameters you want to override. E.g. to override the default Hyperfoil benchmark templates parameters, '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'. This strictly depends on the HF benchmark definition. Default is empty string.
+* `[--java-version]`:     host JDK (sdkman id, e.g. `25.0.4-tem`) for the Maven toolchain in image-build modes that consume the `JAVA_VERSION` state (`semeru.build`, `jdk26.build`, modes derived from [`custom.build.tmpl.yaml`](/modes/custom.build.tmpl.yaml)). It does not change the container runtime: `semeru.build` images stay Semeru-based with OpenJ9-only options, so a non-Semeru JDK there only affects the build, not what gets benchmarked. `custom.native.build` hardcodes its Mandrel JDK, and the prebuilt `native`/`jvm` modes ignore the flag (`run.sh` warns). May appear anywhere on the command line.
+* `[--runtime-base-image]`: container base image providing the benchmarked JDK, for build modes that consume the `RUNTIME_BASE_IMAGE` state (currently `jdk26.build`, default `docker.io/library/eclipse-temurin:26-jdk`). Optional: when unset, the mode's default is used. Ignored by modes that don't build images (`run.sh` warns). May appear anywhere on the command line.
 
 > [!NOTE]
 > If you use `/envs/remote.env.yaml`, please ensure to override variables contained in it with your specific server hostanames
@@ -64,6 +66,47 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] 
 ```bash
 ./run.sh native get-all-villains hyperfoil local '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'
 ```
+
+#### Build images with a specific host JDK and get all heroes locally
+
+```bash
+./run.sh semeru.build get-all-heroes hyperfoil local --java-version 25.0.4-tem
+```
+
+Note this selects the JDK running the Maven build; the benchmarked images are still the mode's own (Semeru-based for `semeru.build`). Any qDup state can also be overridden directly with `-S NAME=value` in `[benchmark_params]`, e.g. `'-S JAVA_VERSION=25.0.4-tem'` is equivalent to `--java-version 25.0.4-tem`.
+
+#### Build plain JVM images with a custom JDK 26 and get all heroes locally
+
+```bash
+./run.sh jdk26.build get-all-heroes hyperfoil local
+```
+
+The [`jdk26.build`](/modes/jdk26.build.script.yaml) mode builds plain JVM images (no CRIU/AOT) from [`modes/assets/jdk26/`](/modes/assets/jdk26/) for benchmarking JDKs without official images. It accepts `--java-version` (Maven toolchain, default `25.0.4-tem`), `--runtime-base-image` (benchmarked JDK, default `docker.io/library/eclipse-temurin:26-jdk`), and `-S JAVA_OPTS_APPEND="..."` for runtime JVM flags. Use `-S SUPERHEROES_CUSTOM_TAG=<tag>` to keep images of different runtimes side by side.
+
+#### Benchmark Temurin 26 (default)
+
+```bash
+./run.sh jdk26.build get-all-heroes hyperfoil local
+```
+
+#### Benchmark Semeru 26 (OpenJ9)
+
+```bash
+./run.sh jdk26.build get-all-heroes hyperfoil local '-S SUPERHEROES_CUSTOM_TAG=semeru26' --runtime-base-image icr.io/appcafe/ibm-semeru-runtimes:open-26-jdk-ubi9-minimal
+```
+
+#### Set JVM flags for all services
+
+Runtime JVM flags go through `-S JAVA_OPTS_APPEND="..."`, honored by both the prebuilt images (`run-java.sh`) and `jdk26.build` images (`entrypoint.sh`):
+
+```bash
+./run.sh jdk26.build get-all-heroes hyperfoil local '-S JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Xms2g -Xmx2g -XX:+UnlockExperimentalVMOptions -XX:+UseCompactObjectHeaders" -S HEROES_REST_MEMORY=3G'
+```
+
+Notes:
+- `-S` *replaces* the `JAVA_OPTS_APPEND` default, so always restate the two base `-D` flags above.
+- Pair heap size with container memory: `-Xmx2g` exceeds the default `--memory 1G` per service and gets OOMKilled. Per-service `HEROES/VILLAINS/LOCATIONS/FIGHTS_REST_MEMORY` and `*_CPU` states already exist (`get-all-heroes` needs only heroes).
+- Flags supported by only one JDK (e.g. HotSpot-only compact headers on a Semeru runtime) abort the run by design: the JVM exits at startup, the readiness watch times out, and the cause is in `report-output/<timestamp>/sut/heroes.logs`. No compatibility matrix is maintained.
 
 ## Additional information
 
