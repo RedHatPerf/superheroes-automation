@@ -548,7 +548,7 @@ scripts:
         -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
         -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
         -e QUARKUS_OTEL_SDK_DISABLED=true
-        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}} -XX:StartFlightRecording=settings=profile,filename=/tmp/jfr-logs/rest-fights.jfr,dumponexit=true,duration=300s"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}} -XX:+FlightRecorder -XX:StartFlightRecording=filename=/tmp/jfr-logs/rest-fights.jfr,duration=300s"
         -v ${{CURRENT_JFR_PATH}}:/tmp/jfr-logs
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
