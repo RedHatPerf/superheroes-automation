@@ -541,6 +541,7 @@ scripts:
         -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_FIGHT_SERVICE__LEVEL=WARN
         -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
         -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
+        -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
