@@ -520,6 +520,12 @@ scripts:
     # -e QUARKUS_LOG_CONSOLE_LEVEL=ALL
     # -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES__LEVEL=INFO
     # -e QUARKUS_LOG_CATEGORY__IO_OPENTELEMETRY_USAGE__LEVEL=ALL
+    - sh: echo "$(pwd)/jfr-logs"
+      then:
+        - set-state: CURRENT_JFR_PATH
+    - sh: sudo rm -fR ${{CURRENT_JFR_PATH}}
+    - sh: mkdir -p ${{CURRENT_JFR_PATH}}
+    - sh: chmod -R 777 ${{CURRENT_JFR_PATH}}
     - sh: >
         ${{CONTAINER_RUNTIME}} run -d
         --name rest-fights 
@@ -542,7 +548,8 @@ scripts:
         -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
         -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
         -e QUARKUS_OTEL_SDK_DISABLED=true
-        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}} -XX:StartFlightRecording=settings=profile,filename=/tmp/jfr-logs/rest-fights.jfr,dumponexit=true,duration=300s"
+        -v ${{CURRENT_JFR_PATH}}:/tmp/jfr-logs
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
         ${{= ${{IS_NATIVE:false}} ? "./${{FIGHTS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
@@ -554,6 +561,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.FIGHTS_REST_POD_ID}}
           STATE_PID: HOST.FIGHTS_REST_PID
+    - queue-download: ${{CURRENT_JFR_PATH}}/rest-fights.jfr
     - sh: ${{CONTAINER_RUNTIME}} exec -it ${{HOST.FIGHTS_REST_POD_ID}} tail -f /deployments/app.log
       silent: true # prevent logs to be printed in the terminal
       watch:
