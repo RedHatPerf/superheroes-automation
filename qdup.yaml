@@ -10,6 +10,7 @@ roles:
     hosts:
       - datasource
     setup-scripts:
+      - remove-stale-datasources
       - infer-datasource-hostnames
       - prepare-superheroes
       - start-jaeger
@@ -27,6 +28,7 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - remove-stale-superheroes
       - start-jit-server
       - prepare-images # should be exposed by script files in /modes folder
       - infer-datasource-hostnames

@@ -1,0 +1,27 @@
+####
+# Plain JVM runtime image for rest-villains with a custom JDK (no CRIU/AOT).
+# Base image is selectable via --build-arg BASE_IMAGE.
+####
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
+
+# run build and runtime as root: base images differ in their default user
+# (e.g. Semeru UBI-minimal is non-root, Temurin is root)
+USER 0
+
+ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en'
+
+# We make four distinct layers so if there are application changes the library layers can be re-used
+COPY target/quarkus-app/lib/ /deployments/lib/
+COPY target/quarkus-app/*.jar /deployments/
+COPY target/quarkus-app/app/ /deployments/app/
+COPY target/quarkus-app/quarkus/ /deployments/quarkus/
+COPY src/main/docker/entrypoint.sh /app/entrypoint.sh
+
+RUN chmod +x /app/entrypoint.sh
+
+EXPOSE 8084
+
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
+
+ENTRYPOINT ["/app/entrypoint.sh"]
