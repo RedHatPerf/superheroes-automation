@@ -517,6 +517,9 @@ scripts:
     - wait-for: KAFKA_READY
     - wait-for: OTEL_READY
     - log: starting Fights rest service...
+    # -e QUARKUS_LOG_CONSOLE_LEVEL=ALL
+    # -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES__LEVEL=INFO
+    # -e QUARKUS_LOG_CATEGORY__IO_OPENTELEMETRY_USAGE__LEVEL=ALL
     - sh: >
         ${{CONTAINER_RUNTIME}} run -d
         --name rest-fights 
@@ -538,10 +541,7 @@ scripts:
         -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_FIGHT_SERVICE__LEVEL=WARN
         -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
         -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
-        -e QUARKUS_LOG_CONSOLE_LEVEL=ALL
-        -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES__LEVEL=INFO
-        -e QUARKUS_LOG_CATEGORY__IO_OPENTELEMETRY_USAGE__LEVEL=ALL
-        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}} -Dio.opentelemetry.context.enableStrictContext=true"
+        -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
         ${{= ${{IS_NATIVE:false}} ? "./${{FIGHTS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
