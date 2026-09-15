@@ -18,13 +18,15 @@ scripts:
     then:
     - log: saving hyperfoil all.json as state
     - sh: cat ${{HF_TMP_DIR:/tmp/hyperfoil}}/run/${{RUN.HF_RUN_ID}}/all.json
-      silent: false
+      silent: true
       then:
       - js: |
           (input, state) => { 
             let { agents, connections, sessions, ...result_stripped } = input
             state.HF_REPORT_ALL = result_stripped
           }
+    - set-state: RUN.HF_REPORT_ALL ${{HF_REPORT_ALL}}
+      silent: true
   - sh: 
       command: rm -rf ${{HF_REPORT_FILE}} ${{HF_BENCHMARK_REF}}
       ignore-exit-code: true
