@@ -168,8 +168,11 @@ scripts:
     # - js: ${{FIGHTS_ENABLED}}
       # then:
     - queue-download: /tmp/${{MAIN_SERVICE_ID}}_perfstat_${{FILE_ID:all}}.log
-    - log: starting perf stat against ${{HOST.${{MAIN_SERVICE_ID}}_REST_PID}}..
-    - sh: perf stat -d -p ${{HOST.${{MAIN_SERVICE_ID}}_REST_PID}} ${{PERFSTAT_PARAMS:}} -o /tmp/${{MAIN_SERVICE_ID}}_perfstat_${{FILE_ID:all}}.log
+    - sh: CONTAINER_PID=${{HOST.${{MAIN_SERVICE_ID}}_REST_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
+      then:
+        - set-state: PERFSTAT_TARGET_PID
+    - log: starting perf stat against ${{PERFSTAT_TARGET_PID}}..
+    - sh: sudo perf stat -d -p ${{PERFSTAT_TARGET_PID}} ${{PERFSTAT_PARAMS:}} -o /tmp/${{MAIN_SERVICE_ID}}_perfstat_${{FILE_ID:all}}.log
       silent: true # Prevent the 'Nanny found idle' warnings
       watch:
         - regex: Problems finding threads of monitor
