@@ -10,6 +10,7 @@ roles:
     hosts:
       - datasource
     setup-scripts:
+      - remove-datasources-containers
       - infer-datasource-hostnames
       - prepare-superheroes
       - start-jaeger
@@ -27,6 +28,8 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - cleanup-superheroes-containers
+      - prepare-superheroes-sut
       - start-jit-server
       - prepare-images # should be exposed by script files in /modes folder
       - infer-datasource-hostnames
@@ -36,6 +39,8 @@ roles:
       - start-locations-grpc
       - start-fights-rest
       - start-fights-ui
+    run-scripts:
+      - save-sut-artifacts
     cleanup-scripts:
       - cleanup-superheroes
 
@@ -67,3 +72,5 @@ roles:
       - cleanup-profiling
 
 states:
+  # STANDARD, TRAINING, OPTIMIZED
+  PHASE: STANDARD

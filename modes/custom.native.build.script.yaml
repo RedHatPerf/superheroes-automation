@@ -42,7 +42,7 @@ scripts:
       JAVA_VERSION: 23.1.5.r21-mandrel
   - sh: >
       ./mvnw --no-transfer-progress clean package -DskipTests -Pnative
-      -Dmaven.compiler.release=21
+      -Dmaven.compiler.release=25
       -Dquarkus.http.host=0.0.0.0
       -Dquarkus.native.container-build=true
       -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21
