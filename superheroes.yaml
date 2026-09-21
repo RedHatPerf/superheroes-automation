@@ -225,6 +225,9 @@ scripts:
           -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
           -e QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
           -e QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+          -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
+          -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
+          -e QUARKUS_OTEL_SDK_DISABLED=true
           -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
           ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         )
@@ -322,6 +325,9 @@ scripts:
         -e QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
         -e QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         -e QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+        -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
+        -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
+        -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
@@ -401,6 +407,9 @@ scripts:
         -e QUARKUS_OTEL_EXPORTER_OTLP_ENDPOINT="${{OTEL_PROTOCOL}}://${{OTEL_HOSTNAME}}:${{OTEL_RECEIVER_PORT}}"
         -e QUARKUS_OTEL_EXPORTER_OTLP_PROTOCOL=grpc
         -e QUARKUS_LOG_CATEGORY__IO_QUARKUS_SAMPLE_SUPERHEROES_LOCATION_GRPC__LEVEL=WARN
+        -e QUARKUS_OTEL_BSP_MAX_QUEUE_SIZE=16384
+        -e QUARKUS_OTEL_BSP_MAX_EXPORT_BATCH_SIZE=2048
+        -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
         ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
