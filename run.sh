@@ -139,7 +139,18 @@ echo "  > Java version:     ${JAVA_VERSION:-(mode default)}"
 echo "  > Runtime image:    ${RUNTIME_BASE_IMAGE:-(mode default)}"
 echo "  > Benchmark params: $ADDITIONAL_ARGS"
 
-QDUP_CMD="jbang qDup@hyperfoil -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
+# Check if jbang is installed, otherwise use Java directly
+LOG_FORMAT="-Dqdup.console.format=\"%d{HH:mm:ss.SSS} %-5p %m%n\" -Dqdup.run.console.format=\"%d{HH:mm:ss.SSS} [ %X{role}:%X{script}@%X{host} ] %-5p %m%n\""
+if command -v jbang >/dev/null 2>&1; then
+  QDUP_CMD="jbang $LOG_FORMAT qDup@hyperfoil -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml"
+else
+  # Fallback leveraging the existing Jenkins environment variables, or defaults if running locally
+  JAVA_BIN=${JAVA:-java}
+  JAR_PATH=${QDUP_JAR:-/opt/tools/qDup.jar}
+  QDUP_CMD="$JAVA_BIN $LOG_FORMAT -jar $JAR_PATH -b report-output $ADDITIONAL_ARGS ${BASE_BENCHMARKS_FOLDER}/${BENCHMARK_FOLDER}/${BENCHMARK_FOLDER}.env.yaml envs/${LOCATION}.env.yaml modes/${MODE}.script.yaml"
+fi
+
+QDUP_CMD="$QDUP_CMD profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
 
 echo Executing: "$QDUP_CMD"
 
