@@ -103,15 +103,15 @@ scripts:
         (input, state) => {
           let cpuResults = input.split(" ").map(v => parseFloat(v)).filter(v => !Number.isNaN(v))
           if (cpuResults.length > 0) {
-            // max cpu usage
-            state.${{MAX_STATE}} = Math.max(...cpuResults)
-            // avg cpu usage
-            state.${{AVG_STATE}} = cpuResults.reduce((all, v) => all + v, 0) / cpuResults.length
+            state["${{MAX_STATE}}"] = Math.max(...cpuResults)
+            state["${{AVG_STATE}}"] = cpuResults.reduce((all, v) => all + v, 0) / cpuResults.length
           } else {
-            state.${{MAX_STATE}} = "NaN"
-            state.${{AVG_STATE}} = "NaN"
+            state["${{MAX_STATE}}"] = "NaN"
+            state["${{AVG_STATE}}"] = "NaN"
           }
         }
+  - set-state: RUN.${{MAX_STATE}} ${{${{MAX_STATE}}}}
+  - set-state: RUN.${{AVG_STATE}} ${{${{AVG_STATE}}}}
   
   parse-rss-results:
   # RSS_FILE: rss file to parse
@@ -124,15 +124,17 @@ scripts:
         (input, state) => {
           let rssResults = input.split(" ").map(v => parseInt(v)).filter(v => !Number.isNaN(v))
           if (rssResults.length > 0) {
-            // max cpu usage
-            state.${{MAX_STATE}} = Math.max(...rssResults)
-            // avg cpu usage
-            state.${{AVG_STATE}} = rssResults.reduce((all, v) => all + v, 0) / rssResults.length
+            // max rss usage
+            state["${{MAX_STATE}}"] = Math.max(...rssResults)
+            // avg rss usage
+            state["${{AVG_STATE}}"] = rssResults.reduce((all, v) => all + v, 0) / rssResults.length
           } else {
-            state.${{MAX_STATE}} = "NaN"
-            state.${{AVG_STATE}} = "NaN"
+            state["${{MAX_STATE}}"] = "NaN"
+            state["${{AVG_STATE}}"] = "NaN"
           }
         }
+  - set-state: RUN.${{MAX_STATE}} ${{${{MAX_STATE}}}}
+  - set-state: RUN.${{AVG_STATE}} ${{${{AVG_STATE}}}}
 
 states:
   JBANG_VERSION: "0.121.0"

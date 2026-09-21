@@ -1,4 +1,5 @@
-FROM icr.io/appcafe/ibm-semeru-runtimes:open-21-jdk-ubi9-minimal
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 USER 0
 
 # Install dumb-init
@@ -38,19 +39,20 @@ RUN chown -R 185 /app/ && chmod -R 777 /app/
 ARG DS_SERVER=localhost
 ARG SUT_SERVER=localhost
 
-ENV QUARKUS_DATASOURCE_JDBC_URL=jdbc:mariadb://${DS_SERVER}:3306/locations_database
-ENV QUARKUS_HIBERNATE_ORM_DATABASE_GENERATION=validate
-ENV QUARKUS_DATASOURCE_USERNAME=locations
-ENV QUARKUS_DATASOURCE_PASSWORD=locations
-ENV QUARKUS_HIBERNATE_ORM_SQL_LOAD_SCRIPT=no-file
+ENV QUARKUS_MONGODB_HOSTS=${DS_SERVER}:27017
+ENV QUARKUS_LIQUIBASE_MONGODB_MIGRATE_AT_START="false"
+ENV QUARKUS_MONGODB_CREDENTIALS_USERNAME=superfight
+ENV QUARKUS_MONGODB_CREDENTIALS_PASSWORD=superfight
+ENV QUARKUS_STORK_HERO_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${SUT_SERVER}:8083
+ENV QUARKUS_STORK_VILLAIN_SERVICE_SERVICE_DISCOVERY_ADDRESS_LIST=${SUT_SERVER}:8084
+#ENV QUARKUS_GRPC_CLIENTS_LOCATIONS_HOST=grpc-locations
+#ENV QUARKUS_GRPC_CLIENTS_LOCATIONS_PORT=8089
+ENV MP_MESSAGING_CONNECTOR_SMALLRYE_KAFKA_APICURIO_REGISTRY_URL=http://${DS_SERVER}:8086/apis/registry/v2
+ENV KAFKA_BOOTSTRAP_SERVERS=PLAINTEXT://${DS_SERVER}:9092
 ENV QUARKUS_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://${DS_SERVER}:4317
 
-COPY --chown=185:root src/main/docker/pidplus.sh /app/pidplus.sh
-COPY --chown=185:root src/main/docker/restore.sh /app/restore.sh
 COPY --chown=185:root src/main/docker/start-quarkus.sh /app/start-quarkus.sh
 
-RUN chmod +x restore.sh
-RUN chmod +x pidplus.sh
 RUN chmod +x start-quarkus.sh
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
@@ -59,16 +61,14 @@ COPY --chown=185 target/quarkus-app/*.jar /deployments/
 COPY --chown=185 target/quarkus-app/app/ /deployments/app/
 COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
 
-RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
-
-USER 185
-
 EXPOSE 8083
 
 ENV JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -XX:+UseJITServer -XX:JITServerAddress=${SUT_SERVER}"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
 
-RUN ./start-quarkus.sh
+RUN mkdir -p /etc/criu && echo tcp-close >>/etc/criu/default.conf
+
+USER 185
 
 CMD ["bash", "start-quarkus.sh"]
 
