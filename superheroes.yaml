@@ -108,6 +108,7 @@ scripts:
         - ctrlC
     timer:
       1m: # max wait time
+      - echo: # if failed print the output of the parent command
       - abort: Jaeger has not been ready in 1 min
   - signal: JAEGER_READY
 
@@ -135,6 +136,7 @@ scripts:
       - ctrlC
     timer:
       1m: # max wait time
+      - echo: # if failed print the output of the parent command
       - abort: Opentelemetry has not been ready in 1 min
   - signal: OTEL_READY
 
@@ -169,6 +171,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Jit Server has not been ready in 1 min
     - signal: JIT_SERVER_READY
 
@@ -200,6 +203,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Heroes db has not been ready in 1 min
     - signal: HEROES_DB_READY
 
@@ -301,6 +305,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Villains db has not been ready in 1 min
     - signal: VILLAINS_DB_READY
 
@@ -383,6 +388,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Locations db has not been ready in 1 min
     - signal: LOCATIONS_DB_READY
 
@@ -461,6 +467,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Fights db has not been ready in 1 min
     - signal: FIGHTS_DB_READY
 
@@ -487,6 +494,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Apicurio registry has not been ready in 1 min
     - signal: APICURIO_READY
 
@@ -516,6 +524,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Kafka broker has not been ready in 1 min
     - signal: KAFKA_READY
 
