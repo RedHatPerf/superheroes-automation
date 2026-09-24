@@ -1,0 +1,7 @@
+# extend: unified.build.script.yaml
+# https://github.com/Hyperfoil/qDup/issues/252
+# only state allowed here - see run.sh
+states:
+  COPY_DOCKER: false
+  JAVA_VERSION: 26.0.2+1.1-tem # used only to build the code
+  SUPERHEROES_CUSTOM_TAG: original

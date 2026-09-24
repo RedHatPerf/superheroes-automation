@@ -9,12 +9,6 @@ globals:
 
 scripts:
 
-  clone-superheroes:
-    # clone the repository and checkout the proper commit/branch
-    - sh: if [ -d ${{SUPERHEROES_BUILD_FOLDER}} ]; then rm -rf ${{SUPERHEROES_BUILD_FOLDER}}; fi
-    - sh: git clone --quiet --depth 1 ${{SUPERHEROES_BUILD_REPO}} ${{SUPERHEROES_BUILD_FOLDER}}
-    - sh: cd ${{SUPERHEROES_BUILD_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_BUILD_COMMIT:main}} && git checkout ${{SUPERHEROES_BUILD_COMMIT:main}}
-
   # override container images states with the one created as part of this test
   prepare-images:
     - log: building custom version of native images..
@@ -28,113 +22,50 @@ scripts:
           fi
         fi
 
+    - sh: |
+        if [ -z "${{SUPERHEROES_CUSTOM_TAG:}}" ]; then
+          echo "FATAL: SUPERHEROES_CUSTOM_TAG states must be provided"
+          exit 1
+        fi
+
     # Conditionally build the custom base image if required (replacing prepare-images-super)
-    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi9.minimal /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi10.minimal /tmp
     - sh: >
         if [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
-          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi9.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
+          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
         fi
 
     - script: clone-superheroes
+
+    # replace git repository Dockerfiles
+    - read-state: ${{COPY_DOCKER}}
+      then:
+        - regex: "true"
+          then:
+            - read-state: ${{IS_NATIVE}}
+              then:
+                - regex: "true"
+                  then:
+                    - script: copy-native-dockerfiles
+                  else:
+                    - script: copy-jvm-dockerfiles
+          else:
+            - log: "Using the repository image"
+
+    - script: sdk-select-java
+      with:
+        JAVA_VERSION: ${{JAVA_VERSION}}
 
     - read-state: ${{IS_NATIVE}}
       then:
         - regex: "true"
           then:
-            - log: Configuring native build...
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/.dockerignore /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.heroes.native /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.villains.native /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.locations.native /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.fights.native /tmp
-
-            - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
-
-            - sh: yes | cp /tmp/.dockerignore ./rest-heroes/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.heroes.native rest-heroes/src/main/docker/Dockerfile.native
-            - sh: yes | cp /tmp/.dockerignore ./rest-villains/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.villains.native rest-villains/src/main/docker/Dockerfile.native
-            - sh: yes | cp /tmp/.dockerignore ./grpc-locations/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.locations.native grpc-locations/src/main/docker/Dockerfile.native
-            - sh: yes | cp /tmp/.dockerignore ./rest-fights/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.fights.native rest-fights/src/main/docker/Dockerfile.native
+            - script: build-native
           else:
-            - log: Configuring JVM build...
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.heroes /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.villains /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.locations /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.fights /tmp
-            - upload: ${{ENV.SCRIPT_DIR}}/assets/start-quarkus.sh /tmp
-
-            - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
-
-            - sh: echo $'\n!src/main/docker' >> rest-heroes/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.heroes rest-heroes/src/main/docker/Dockerfile.jvm
-            - sh: yes | cp /tmp/start-quarkus.sh rest-heroes/src/main/docker/start-quarkus.sh
-            - sh: echo $'\n!src/main/docker' >> rest-villains/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.villains rest-villains/src/main/docker/Dockerfile.jvm
-            - sh: yes | cp /tmp/start-quarkus.sh rest-villains/src/main/docker/start-quarkus.sh
-            - sh: echo $'\n!src/main/docker' >> grpc-locations/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.locations grpc-locations/src/main/docker/Dockerfile.jvm
-            - sh: yes | cp /tmp/start-quarkus.sh grpc-locations/src/main/docker/start-quarkus.sh
-            - sh: echo $'\n!src/main/docker' >> rest-fights/.dockerignore
-            - sh: yes | cp /tmp/Dockerfile.fights rest-fights/src/main/docker/Dockerfile.jvm
-            - sh: yes | cp /tmp/start-quarkus.sh rest-fights/src/main/docker/start-quarkus.sh
+            - script: build-jvm
 
     - queue-download: /tmp/superheroes.build.log
-    - script: sdk-select-java
-      with:
-        JAVA_VERSION: ${{JAVA_VERSION}}
 
-    # Conditionally execute either the native Mandrel build or the standard JVM build
-    - sh: >
-        (
-          set -o pipefail;
-          set -x;
-          if [ "${{IS_NATIVE}}" = "true" ]; then
-            ./mvnw --no-transfer-progress clean package -DskipTests -Pnative \
-              -Dmaven.compiler.release=25 \
-              -Dquarkus.http.host=0.0.0.0 \
-              -Dquarkus.native.container-build=true \
-              -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
-              -Dquarkus.container-image.build=true \
-              -Dquarkus.container-image.push=false \
-              -Dquarkus.container-image.tag=${{SUPERHEROES_CUSTOM_TAG}} \
-              -Dquarkus.native.additional-build-args=-H:-DeleteLocalSymbols,-H:-OmitInlinedMethodDebugLineInfo \
-              -Dquarkus.native.debug.enabled \
-              -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
-          else
-            ./mvnw --no-transfer-progress clean package -DskipTests \
-              -Dmaven.compiler.release=25 \
-              -Dquarkus.http.host=0.0.0.0 \
-              -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
-          fi
-        )
-
-    - sh: |
-        (
-          set -o pipefail;
-          set -x;
-          if [ "${{IS_NATIVE}}" = "false" ]; then
-            build_svc() {
-              local svc=$1
-              local cpus=$2
-              # Notice the parameter added below
-              ${{CONTAINER_RUNTIME}} build ${{CONTAINER_RUNTIME_PARAMS}} --ulimit=nofile=1048576:1048576 \
-                -f ./$svc/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/$svc:${{SUPERHEROES_CUSTOM_TAG}} \
-                --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
-                --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} \
-                --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} \
-                --memory 1G --cpuset-cpus $cpus ./$svc/ | tee -a /tmp/superheroes.build.log
-            }
-            ${{HEROES_ENABLED}} && build_svc rest-heroes ${{HEROES_REST_CPU}} || true
-            ${{VILLAINS_ENABLED}} && build_svc rest-villains ${{VILLAINS_REST_CPU}} || true
-            ${{LOCATIONS_ENABLED}} && build_svc grpc-locations ${{LOCATIONS_GRPC_CPU}} || true
-            ${{FIGHTS_ENABLED}} && build_svc rest-fights ${{FIGHTS_REST_CPU}} || true
-          fi
-        )
-
-    # override images
     - set-state: HEROES_REST_IMAGE "quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}}"
     - set-state: VILLAINS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}}"
     - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
@@ -142,6 +73,104 @@ scripts:
 
     - signal: SUPERHEROES_IMAGES_BUILD_COMPLETED
 
+  clone-superheroes:
+    # clone the repository and checkout the proper commit/branch
+    - sh: if [ -d ${{SUPERHEROES_BUILD_FOLDER}} ]; then rm -rf ${{SUPERHEROES_BUILD_FOLDER}}; fi
+    - sh: git clone --quiet --depth 1 ${{SUPERHEROES_BUILD_REPO}} ${{SUPERHEROES_BUILD_FOLDER}}
+    - sh: cd ${{SUPERHEROES_BUILD_FOLDER}} && git fetch --depth 1 origin ${{SUPERHEROES_BUILD_COMMIT:main}} && git checkout ${{SUPERHEROES_BUILD_COMMIT:main}}
+
+  build-jvm:
+    - sh: >
+        (
+          set -o pipefail;
+          set -x;
+          ./mvnw --no-transfer-progress clean package -DskipTests \
+          -Dmaven.compiler.release=25 \
+          -Dquarkus.http.host=0.0.0.0 \
+          -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log                        
+        )
+    - sh: |
+        (
+          set -o pipefail;
+          set -x;
+          build_svc() {
+            local svc=$1
+            local cpus=$2
+            # Notice the parameter added below
+            ${{CONTAINER_RUNTIME}} build ${{CONTAINER_RUNTIME_PARAMS}} --ulimit=nofile=1048576:1048576 \
+              -f ./$svc/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/$svc:${{SUPERHEROES_CUSTOM_TAG}} \
+              --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
+              --build-arg=SUT_SERVER=${{= getHostname( '${{SUT_SERVER}}' )}} \
+              --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} \
+              --memory 1G --cpuset-cpus $cpus ./$svc/ | tee -a /tmp/superheroes.build.log
+          }
+          ${{HEROES_ENABLED}} && build_svc rest-heroes ${{HEROES_REST_CPU}} || true
+          ${{VILLAINS_ENABLED}} && build_svc rest-villains ${{VILLAINS_REST_CPU}} || true
+          ${{LOCATIONS_ENABLED}} && build_svc grpc-locations ${{LOCATIONS_GRPC_CPU}} || true
+          ${{FIGHTS_ENABLED}} && build_svc rest-fights ${{FIGHTS_REST_CPU}} || true
+        )
+
+  build-native:
+    - sh: >
+        (
+          set -o pipefail;
+          set -x;
+          ./mvnw --no-transfer-progress clean package -DskipTests -Pnative \
+          -Dmaven.compiler.release=25 \
+          -Dquarkus.http.host=0.0.0.0 \
+          -Dquarkus.native.container-build=true \
+          -Dquarkus.native.builder-image=quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 \
+          -Dquarkus.container-image.build=true \
+          -Dquarkus.container-image.push=false \
+          -Dquarkus.container-image.tag=${{SUPERHEROES_CUSTOM_TAG}} \
+          -Dquarkus.native.additional-build-args=-H:-DeleteLocalSymbols,-H:-OmitInlinedMethodDebugLineInfo \
+          -Dquarkus.native.debug.enabled \
+          -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
+        )
+        
+    
+
+  copy-native-dockerfiles:
+    - log: Configuring native build...
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/.dockerignore /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.heroes.native /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.villains.native /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.locations.native /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/custom-native-debuginfo/Dockerfile.fights.native /tmp
+
+    - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
+
+    - sh: yes | cp /tmp/.dockerignore ./rest-heroes/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.heroes.native rest-heroes/src/main/docker/Dockerfile.native
+    - sh: yes | cp /tmp/.dockerignore ./rest-villains/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.villains.native rest-villains/src/main/docker/Dockerfile.native
+    - sh: yes | cp /tmp/.dockerignore ./grpc-locations/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.locations.native grpc-locations/src/main/docker/Dockerfile.native
+    - sh: yes | cp /tmp/.dockerignore ./rest-fights/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.fights.native rest-fights/src/main/docker/Dockerfile.native
+
+  copy-jvm-dockerfiles:
+    - log: Configuring JVM build...
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.heroes /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.villains /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.locations /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.fights /tmp
+    - upload: ${{ENV.SCRIPT_DIR}}/assets/start-quarkus.sh /tmp
+
+    - sh: cd ${{SUPERHEROES_BUILD_FOLDER}}
+
+    - sh: echo $'\n!src/main/docker' >> rest-heroes/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.heroes rest-heroes/src/main/docker/Dockerfile.jvm
+    - sh: yes | cp /tmp/start-quarkus.sh rest-heroes/src/main/docker/start-quarkus.sh
+    - sh: echo $'\n!src/main/docker' >> rest-villains/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.villains rest-villains/src/main/docker/Dockerfile.jvm
+    - sh: yes | cp /tmp/start-quarkus.sh rest-villains/src/main/docker/start-quarkus.sh
+    - sh: echo $'\n!src/main/docker' >> grpc-locations/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.locations grpc-locations/src/main/docker/Dockerfile.jvm
+    - sh: yes | cp /tmp/start-quarkus.sh grpc-locations/src/main/docker/start-quarkus.sh
+    - sh: echo $'\n!src/main/docker' >> rest-fights/.dockerignore
+    - sh: yes | cp /tmp/Dockerfile.fights rest-fights/src/main/docker/Dockerfile.jvm
+    - sh: yes | cp /tmp/start-quarkus.sh rest-fights/src/main/docker/start-quarkus.sh
 
 states:
   # the following must be empty and should be overwritten
@@ -162,3 +191,4 @@ states:
   IS_ENTRYPOINT_WRAPPER: false
   IS_NATIVE: false
   BUILD_BASE_IMAGE: false
+  COPY_DOCKER: true
