@@ -59,7 +59,7 @@ scripts:
       -p 4318:4317
       -p ${{OTEL_RECEIVER_PORT}}
       -e COLLECTOR_OTLP_ENABLED=true
-      ${{JAEGER_IMAGE:'mirror.gcr.io/jaegertracing/all-in-one:1'}}
+      ${{JAEGER_IMAGE}}
     then:
     - regex: (?<HOST.JAEGER_POD_ID>[a-f0-9]{64}$)
       else:
@@ -90,7 +90,7 @@ scripts:
       -p ${{OTEL_RECEIVER_PORT}}:4317
       -v /tmp/otel-collector-config.yaml:/conf/otel-collector-config.yml:z
       ${{= getNetwork( '${{DS_SERVER}}' ) }}
-      ${{OTEL_IMAGE:'mirror.gcr.io/otel/opentelemetry-collector:0.112.0'}} --config=/conf/otel-collector-config.yml
+      ${{OTEL_IMAGE}} --config=/conf/otel-collector-config.yml
     then:
     - regex: (?<HOST.OTEL_POD_ID>[a-f0-9]{64}$)
       else:
@@ -157,7 +157,7 @@ scripts:
         -e POSTGRES_PASSWORD=superman
         -e POSTGRES_DB=heroes_database
         -v ${{SUPERHEROES_FOLDER}}/rest-heroes/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql:z
-        ${{HEROES_DB_IMAGE:'mirror.gcr.io/library/postgres:16'}}
+        ${{HEROES_DB_IMAGE}}
       then:
       - regex: (?<HOST.HEROES_DB_POD_ID>[a-f0-9]{64}$)
         else:
@@ -200,7 +200,7 @@ scripts:
         -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{HEROES_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-heroes:native-latest'}}
+        ${{HEROES_REST_IMAGE}}
         ${{= ${{IS_NATIVE:false}} ? "./${{HEROES_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.HEROES_REST_POD_ID>[a-f0-9]{64}$)
@@ -234,7 +234,7 @@ scripts:
         -e POSTGRES_PASSWORD=superbad
         -e POSTGRES_DB=villains_database
         -v ${{SUPERHEROES_FOLDER}}/rest-villains/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql:z
-        ${{VILLAINS_DB_IMAGE:'mirror.gcr.io/library/postgres:16'}}
+        ${{VILLAINS_DB_IMAGE}}
       then:
       - regex: (?<HOST.VILLAINS_DB_POD_ID>[a-f0-9]{64}$)
         else:
@@ -279,7 +279,7 @@ scripts:
         -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{VILLAINS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-villains:native-latest'}}
+        ${{VILLAINS_REST_IMAGE}}
         ${{= ${{IS_NATIVE:false}} ? "./${{VILLAINS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.VILLAINS_REST_POD_ID>[a-f0-9]{64}$)
@@ -317,7 +317,7 @@ scripts:
         -e MARIADB_SKIP_TEST_DB=yes
         -v ${{SUPERHEROES_FOLDER}}/grpc-locations/deploy/db-init/initialize-tables.sql:/docker-entrypoint-initdb.d/1-init-tables.sql:z
         ${{= getNetwork( '${{DS_SERVER}}' ) }}
-        ${{LOCATIONS_DB_IMAGE:'mirror.gcr.io/library/mariadb:11.5'}}
+        ${{LOCATIONS_DB_IMAGE}}
       then:
       - regex: (?<HOST.LOCATIONS_DB_POD_ID>[a-f0-9]{64}$)
         else:
@@ -362,7 +362,7 @@ scripts:
         -e QUARKUS_OTEL_SDK_DISABLED=true
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{LOCATIONS_GRPC_IMAGE:'quay.io/quarkus-super-heroes/grpc-locations:native-latest'}}
+        ${{LOCATIONS_GRPC_IMAGE}}
         ${{= ${{IS_NATIVE:false}} ? "./${{LOCATIONS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.LOCATIONS_GRPC_POD_ID>[a-f0-9]{64}$)
@@ -396,7 +396,7 @@ scripts:
         -e MONGO_INITDB_ROOT_USERNAME=super
         -e MONGO_INITDB_ROOT_PASSWORD=super
         -v ${{SUPERHEROES_FOLDER}}/rest-fights/deploy/db-init/initialize-database.js:/docker-entrypoint-initdb.d/1-init-db.js:z
-        ${{FIGHTS_DB_IMAGE:'mongo:7.0'}}
+        ${{FIGHTS_DB_IMAGE}}
       then:
       - regex: (?<HOST.FIGHTS_DB_POD_ID>[a-f0-9]{64}$)
         else:
@@ -425,7 +425,7 @@ scripts:
         -p ${{APICURIO_PORT}}:8086
         -e REGISTRY_AUTH_ANONYMOUS_READ_ACCESS_ENABLED="true"
         -e QUARKUS_HTTP_PORT=8086
-        ${{APICURIO_IMAGE:'quay.io/apicurio/apicurio-registry-mem:2.6.5.Final'}}
+        ${{APICURIO_IMAGE}}
       then:
       - regex: (?<HOST.APICURIO_POD_ID>[a-f0-9]{64}$)
         else:
@@ -455,7 +455,7 @@ scripts:
         -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${{KAFKA_HOSTNAME}}:9092
         --entrypoint sh
         ${{= getNetwork( '${{DS_SERVER}}' ) }}
-        ${{KAFKA_IMAGE:'quay.io/strimzi/kafka:0.43.0-kafka-3.8.0'}} -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
+        ${{KAFKA_IMAGE}} -c 'export CLUSTER_ID=$(bin/kafka-storage.sh random-uuid) && bin/kafka-storage.sh format -t ${CLUSTER_ID} -c config/kraft/server.properties && bin/kafka-server-start.sh config/kraft/server.properties --override advertised.listeners=${KAFKA_ADVERTISED_LISTENERS}'
       then:
       - regex: (?<HOST.KAFKA_POD_ID>[a-f0-9]{64}$)
         else:
@@ -515,7 +515,7 @@ scripts:
         -e JAVA_OPTS_APPEND="${{JAVA_OPTS_APPEND:}}"
         -v ${{CURRENT_JFR_PATH}}:/tmp/jfr-logs
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{FIGHTS_REST_IMAGE:'quay.io/quarkus-super-heroes/rest-fights:native-latest'}}
+        ${{FIGHTS_REST_IMAGE}}
         ${{= ${{IS_NATIVE:false}} ? "./${{FIGHTS_NATIVE_ENTRYPOINT}} ${{JAVA_OPTS_APPEND:}}" : '' }}
       then:
       - regex: (?<HOST.FIGHTS_REST_POD_ID>[a-f0-9]{64}$)
@@ -553,7 +553,7 @@ scripts:
         -p ${{FIGHTS_UI_PORT}}:8080
         -e API_BASE_URL=http://${{FIGHTS_REST_HOSTNAME}}:${{FIGHTS_REST_PORT}}
         ${{= getNetwork( '${{SUT_SERVER}}' ) }}
-        ${{FIGHTS_UI_IMAGE:'quay.io/quarkus-super-heroes/ui-super-heroes:native-latest'}}
+        ${{FIGHTS_UI_IMAGE}}
       then:
       - regex: (?<HOST.FIGHTS_REST_UI_ID>[a-f0-9]{64}$)
         else:
