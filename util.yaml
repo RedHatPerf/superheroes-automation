@@ -39,7 +39,7 @@ scripts:
       # SDKMAN 5.9.1+575
     then:
     - regex: "SDKMAN (?<RUN.sdk_version>[\\d\\.\\+]+)"
-  
+
   sdk-select-java:
   - script: install-sdkman # requires util.yaml
   - sh:
@@ -66,9 +66,9 @@ scripts:
   extract-service-pid:
   # CONTAINER_ID: the id of the running container
   # STATE_PID: the state where the pid should be saved to
-  - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{CONTAINER_ID}}
+  - sh: ${{CONTAINER_RUNTIME}} inspect --format='{{.State.Pid}}' ${{CONTAINER_ID}} 2>/dev/null
     then:
-    - regex: (^[1-9][0-9]*$)
+    - regex: ([1-9][0-9]*)
       then:
       - set-state: ${{STATE_PID}}
   # if we have wrappers as entrypoint we should find the java process
@@ -112,7 +112,7 @@ scripts:
         }
   - set-state: RUN.${{MAX_STATE}} ${{${{MAX_STATE}}}}
   - set-state: RUN.${{AVG_STATE}} ${{${{AVG_STATE}}}}
-  
+
   parse-rss-results:
   # RSS_FILE: rss file to parse
   # MAX_STATE: where to save the max result
