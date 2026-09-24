@@ -78,6 +78,7 @@ scripts:
         - ctrlC
     timer:
       1m: # max wait time
+      - echo: # if failed print the output of the parent command
       - abort: Jaeger has not been ready in 1 min
   - signal: JAEGER_READY
 
@@ -106,6 +107,7 @@ scripts:
       - ctrlC
     timer:
       1m: # max wait time
+      - echo: # if failed print the output of the parent command
       - abort: Opentelemetry has not been ready in 1 min
   - signal: OTEL_READY
 
@@ -140,6 +142,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Jit Server has not been ready in 1 min
     - signal: JIT_SERVER_READY
 
@@ -171,6 +174,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Heroes db has not been ready in 1 min
     - signal: HEROES_DB_READY
 
@@ -249,6 +253,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Villains db has not been ready in 1 min
     - signal: VILLAINS_DB_READY
 
@@ -331,6 +336,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Locations db has not been ready in 1 min
     - signal: LOCATIONS_DB_READY
 
@@ -409,6 +415,7 @@ scripts:
           - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Fights db has not been ready in 1 min
     - signal: FIGHTS_DB_READY
 
@@ -435,6 +442,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Apicurio registry has not been ready in 1 min
     - signal: APICURIO_READY
 
@@ -464,6 +472,7 @@ scripts:
         - ctrlC
       timer:
         1m: # max wait time
+        - echo: # if failed print the output of the parent command
         - abort: Kafka broker has not been ready in 1 min
     - signal: KAFKA_READY
 
@@ -629,7 +638,7 @@ scripts:
             - regex: "false"
               then:
                 - sh: "echo '-----------------' >> ${{HEROES_REST_LOGS_FILE}}"
-                - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log - >> ${{HEROES_REST_LOGS_FILE}}
+                - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.HEROES_REST_POD_ID}}:/deployments/app.log - >> ${{HEROES_REST_LOGS_FILE}} 2>&1 || true
   - js: ${{FIGHTS_ENABLED}}
     then:
     - read-state: ${{HOST.FIGHTS_REST_POD_ID}}
@@ -641,7 +650,7 @@ scripts:
           - regex: "false"
             then:
               - sh: "echo '-----------------' >> ${{FIGHTS_REST_LOGS_FILE}}"
-              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.FIGHTS_REST_POD_ID}}:/deployments/app.log - >> ${{FIGHTS_REST_LOGS_FILE}}
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.FIGHTS_REST_POD_ID}}:/deployments/app.log - >> ${{FIGHTS_REST_LOGS_FILE}} 2>&1 || true
   - js: ${{LOCATIONS_ENABLED}}
     then:
     - read-state: ${{HOST.LOCATIONS_GRPC_POD_ID}}
@@ -653,7 +662,7 @@ scripts:
           - regex: "false"
             then:
               - sh: "echo '-----------------' >> ${{LOCATIONS_GRPC_LOGS_FILE}}"
-              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - >> ${{LOCATIONS_GRPC_LOGS_FILE}}
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.LOCATIONS_GRPC_POD_ID}}:/deployments/app.log - >> ${{LOCATIONS_GRPC_LOGS_FILE}} 2>&1 || true
   - js: ${{VILLAINS_ENABLED}}
     then:
     - read-state: ${{HOST.VILLAINS_REST_POD_ID}}
@@ -665,7 +674,7 @@ scripts:
           - regex: "false"
             then:
               - sh: "echo '-----------------' >> ${{VILLAINS_REST_LOGS_FILE}}"
-              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.VILLAINS_REST_POD_ID}}:/deployments/app.log - >> ${{VILLAINS_REST_LOGS_FILE}}
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.VILLAINS_REST_POD_ID}}:/deployments/app.log - >> ${{VILLAINS_REST_LOGS_FILE}} 2>&1 || true
   - js: ${{JIT_SERVER_ENABLED}}
     then:
     - read-state: ${{HOST.JIT_SERVER_POD_ID}}
@@ -677,7 +686,7 @@ scripts:
           - regex: "false"
             then:
               - sh: "echo '-----------------' >> ${{JIT_SERVER_LOGS_FILE}}"
-              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.JIT_SERVER_POD_ID}}:/deployments/app.log - >> ${{JIT_SERVER_LOGS_FILE}}
+              - sh: ${{CONTAINER_RUNTIME}} cp ${{HOST.JIT_SERVER_POD_ID}}:/deployments/app.log - >> ${{JIT_SERVER_LOGS_FILE}} 2>&1 || true
   # then, force and remove all pods if needed
   - sh: docker commit rest-heroes rest-heroes-commit || true
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
