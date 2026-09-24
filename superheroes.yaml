@@ -36,14 +36,10 @@ scripts:
   remove-stale-datasources:
   # remove stale containers left behind by previous/aborted runs (e.g. podman
   # without --replace fails with 'container name already in use')
-  - sh:
-      command: ${{CONTAINER_RUNTIME}} rm -f jaeger otel heroes-db villains-db locations-db fights-db apicurio fights-kafka
-      ignore-exit-code: true
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=^(jaeger|otel|heroes-db|villains-db|locations-db|fights-db|fights-kafka|apicurio)$" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
 
   remove-stale-superheroes:
-  - sh:
-      command: ${{CONTAINER_RUNTIME}} rm -f rest-heroes rest-villains grpc-locations rest-fights ui-super-heroes jit-server
-      ignore-exit-code: true
+  - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=^(rest-heroes|rest-villains|grpc-locations|rest-fights|ui-super-heroes|jit-server)$" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
 
   prepare-superheroes:
   # clone the repository and checkout the proper commit/branch
