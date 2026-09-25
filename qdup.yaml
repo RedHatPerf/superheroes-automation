@@ -1,4 +1,33 @@
+scripts:
+  wait-for-all-containers:
+    # Core monitoring services are always started
+    - wait-for: JAEGER_READY
+    - wait-for: OTEL_READY
 
+    # Conditionally wait for JIT Server
+    - js: ${{JIT_SERVER_ENABLED}}
+      then:
+        - wait-for: JIT_SERVER_READY
+
+    # Conditionally wait for Heroes
+    - js: ${{HEROES_ENABLED}}
+      then:
+        - wait-for: HEROES_REST_READY
+
+    # Conditionally wait for Villains
+    - js: ${{VILLAINS_ENABLED}}
+      then:
+        - wait-for: VILLAINS_REST_READY
+
+    # Conditionally wait for Locations
+    - js: ${{LOCATIONS_ENABLED}}
+      then:
+        - wait-for: LOCATIONS_REST_READY
+
+    # Conditionally wait for Fights
+    - js: ${{FIGHTS_ENABLED}}
+      then:
+        - wait-for: FIGHTS_REST_READY
 
 hosts:
   sut: ${{SUT_SERVER}}
@@ -47,6 +76,7 @@ roles:
       - driver
     setup-scripts:
       - setup-driver
+      - wait-for-all-containers
     run-scripts:
       - run-benchmark
     cleanup-scripts:
