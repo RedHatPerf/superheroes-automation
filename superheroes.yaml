@@ -371,7 +371,7 @@ scripts:
         with:
           CONTAINER_ID: ${{HOST.LOCATIONS_GRPC_POD_ID}}
           STATE_PID: HOST.LOCATIONS_GRPC_PID
-    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.LOCATIONS_GRPC_PID}}
+    - sh: ${{CONTAINER_RUNTIME}} logs -f ${{HOST.LOCATIONS_GRPC_POD_ID}}
       silent: true # prevent logs to be printed in the terminal
       watch:
       - regex: started in.*Listening on
