@@ -29,6 +29,8 @@ scripts:
       then:
         - wait-for: FIGHTS_REST_READY
 
+    - signal: CONTAINERS_READY
+
 hosts:
   sut: ${{SUT_SERVER}}
   datasource: ${{DS_SERVER}}
@@ -86,7 +88,9 @@ roles:
     hosts:
       - sut
     setup-scripts:
+      - cleanup-profiling
       - app-prof-setup
+      - set-target-pid
     run-scripts:
       - run-pidstat
       - run-vmstat
