@@ -70,7 +70,7 @@ echo "  > Mode:             $MODE"
 echo "  > Benchmark:        $BENCHMARK_FOLDER"
 echo "  > Driver:           $DRIVER"
 echo "  > Server:           $LOCATION"
-echo "  > Benchmark params: $BENCHMARK_PARAMS"
+echo "  > Benchmark params: $ADDITIONAL_ARGS"
 
 # Check if jbang is installed, otherwise use Java directly
 LOG_FORMAT="-Dqdup.console.format=\"%d{HH:mm:ss.SSS} %-5p %m%n\" -Dqdup.run.console.format=\"%d{HH:mm:ss.SSS} [ %X{role}:%X{script}@%X{host} ] %-5p %m%n\""
