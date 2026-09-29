@@ -1,0 +1,8 @@
+# extend: unified.build.script.yaml
+# https://github.com/Hyperfoil/qDup/issues/252
+# only state allowed here - see run.sh
+states:
+  IMAGE_REPOSITORY: icr.io/appcafe/ibm-semeru-runtimes
+  BASE_IMAGE: open-21-jdk-ubi9-minimal
+  JAVA_VERSION: 21.0.9-sem
+  SUPERHEROES_CUSTOM_TAG: semeru

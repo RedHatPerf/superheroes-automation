@@ -1,0 +1,9 @@
+# extend: unified.build.script.yaml
+# https://github.com/Hyperfoil/qDup/issues/252
+# only state allowed here - see run.sh
+states:
+  IMAGE_REPOSITORY: localhost/my-base
+  BASE_IMAGE: java26-sem
+  JAVA_VERSION: 26.0.2-sem
+  SUPERHEROES_CUSTOM_TAG: semeru
+  BUILD_BASE_IMAGE: true
