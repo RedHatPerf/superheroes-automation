@@ -1,145 +1,174 @@
 scripts:
+  set-target-pid:
+    - wait-for: CONTAINERS_READY
+
+    - log: "get-target-pid for heroes ${{HEROES_ENABLED:false}}:${{HOST.HEROES_REST_PID:0}}"
+    - script: get-target-pid
+      with:
+        ENABLED: ${{HEROES_ENABLED:false}}
+        CONTAINER_PID: ${{HOST.HEROES_REST_PID:0}}
+        TARGET_STATE_NAME: HEROES_TARGET_PID
+
+    - log: "get-target-pid for villains ${{VILLAINS_ENABLED:false}}:${{HOST.VILLAINS_REST_PID:0}}"
+    - script: get-target-pid
+      with:
+        ENABLED: ${{VILLAINS_ENABLED:false}}
+        CONTAINER_PID: ${{HOST.VILLAINS_REST_PID:0}}
+        TARGET_STATE_NAME: VILLAINS_TARGET_PID
+
+    - log: "get-target-pid for locations ${{LOCATIONS_ENABLED:false}}:${{HOST.LOCATIONS_GRPC_PID:0}}"
+    - script: get-target-pid
+      with:
+        ENABLED: ${{LOCATIONS_ENABLED:false}}
+        CONTAINER_PID: ${{HOST.LOCATIONS_GRPC_PID}}
+        TARGET_STATE_NAME: LOCATIONS_GRPC_TARGET_PID
+
+    - log: "get-target-pid for fights ${{FIGHTS_ENABLED:false}}:${{HOST.FIGHTS_REST_PID:0}}"
+    - script: get-target-pid
+      with:
+        ENABLED: ${{FIGHTS_ENABLED:false}}
+        CONTAINER_PID: ${{HOST.FIGHTS_REST_PID:0}}
+        TARGET_STATE_NAME: FIGHTS_TARGET_PID
+
+  get-target-pid:
+    - js: '"${{ENABLED}}" === "true" && "${{CONTAINER_PID}}" !== "0" && "${{CONTAINER_PID}}".length > 0'
+      then:
+        - sh: |
+            CHILDREN=$(pgrep -P "${{CONTAINER_PID}}" 2>/dev/null)
+            CHILD_COUNT=$(echo "$CHILDREN" | grep -c -v '^$' || true)
+            
+            # Put the prefix in a shell variable.
+            # This prevents qdup from echoing the prefix and the PID on the same line!
+            PFX="ACTUAL_PID:"
+            
+            if [ "$CHILD_COUNT" -eq 0 ]; then
+              echo "${PFX}${{CONTAINER_PID}}"
+            elif [ "$CHILD_COUNT" -eq 1 ]; then
+              echo "${PFX}$(echo "$CHILDREN" | tr -d ' ')"
+            else
+              JAVA_PID=$(pgrep -P "${{CONTAINER_PID}}" -f java 2>/dev/null | head -n 1)
+              if [ -n "$JAVA_PID" ]; then
+                echo "${PFX}$JAVA_PID"
+              else
+                echo "ERROR: Multiple child processes found under PID ${{CONTAINER_PID}}, but none matched 'java'." >&2
+                exit 1
+              fi
+            fi
+          then:
+            - regex: 'ACTUAL_PID:(?<TARGET_PID>\d+)'
+              then:
+                - set-state: HOST.${{TARGET_STATE_NAME}} ${{TARGET_PID}}
+
   run-pidstat:
-  # WAIT_FOR: which signal should it wait before starting 
+  # WAIT_FOR: which signal should it wait before starting
   # WAIT_END: which signal should it wait before stopping
   # FILE_ID: a name to identify the generated file if multiple runs
-  - js: ${{PIDSTAT_ENABLED}}
+  - js: ${{PIDSTAT_ENABLED:false}}
     then:
-    - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
-    - js: ${{HEROES_ENABLED}}
-      then:
-      - log: starting pidstat against ${{HOST.HEROES_REST_PID}}..
-      - sh:
-          # native image have a single pid. for container we should use the pid from pgrep
-          command: |
-            CONTAINER_PID=${{HOST.HEROES_REST_PID}}
-            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
-            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/HEROES_pidstat_${{FILE_ID:all}}.log & export HEROES_PIDSTAT_PID="$!"
-      - queue-download: /tmp/HEROES_pidstat_${{FILE_ID:all}}.log
-    - js: ${{VILLAINS_ENABLED}}
-      then:
-      - log: starting pidstat against ${{HOST.VILLAINS_REST_PID}}..
-      - sh:
-          # native image have a single pid. for container we should use the pid from pgrep
-          command: |
-            CONTAINER_PID=${{HOST.VILLAINS_REST_PID}}
-            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
-            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log & export VILLAINS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log
-    - js: ${{LOCATIONS_ENABLED}}
-      then:
-      - log: starting pidstat against ${{HOST.LOCATIONS_GRPC_PID}}..
-      - sh:
-          # native image have a single pid. for container we should use the pid from pgrep
-          command: |
-            CONTAINER_PID=${{HOST.LOCATIONS_GRPC_PID}}
-            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
-            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log & export LOCATIONS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log
-    - js: ${{FIGHTS_ENABLED}}
-      then:
-      - log: starting pidstat against ${{HOST.FIGHTS_REST_PID}}..
-      - sh:
-          # native image have a single pid. for container we should use the pid from pgrep
-          command: |
-            CONTAINER_PID=${{HOST.FIGHTS_REST_PID}}
-            TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID)
-            pidstat -p $TARGET_PID ${{PIDSTAT_PARAMS}} > /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log & export FIGHTS_PIDSTAT_PID="$!"
-      - queue-download: /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log
-    - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
-      then:
-      - sh: kill ${HEROES_PIDSTAT_PID} || echo "pidstat already stopped"
-      - sh: kill ${VILLAINS_PIDSTAT_PID} || echo "pidstat already stopped"
-      - sh: kill ${LOCATIONS_PIDSTAT_PID} || echo "pidstat already stopped"
-      - sh: kill ${FIGHTS_PIDSTAT_PID} || echo "pidstat already stopped"
-  
+      - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
+      - sh: |
+          # Define target apps, their enabled states, and container PIDs outside the loop
+          # Fallbacks (:false and :0) prevent bash parsing errors if a variable is unset
+          TARGETS=(
+            "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
+            "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
+            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+            "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
+          )
+          
+          # Loop through each component
+          for TARGET in "${TARGETS[@]}"; do
+            read -r APP_NAME IS_ENABLED CONTAINER_PID <<< "$TARGET"
+          
+            if [ "$IS_ENABLED" = "true" ] && [ "$CONTAINER_PID" != "0" ]; then
+              echo "Starting pidstat against container PID $CONTAINER_PID ($APP_NAME)..."
+          
+              # Target the container PID directly with sudo (use -t if you want to track threads/children)
+              sudo pidstat -p $CONTAINER_PID ${{PIDSTAT_PARAMS}} > /tmp/${APP_NAME}_pidstat_${{FILE_ID:all}}.log &
+            fi
+          done
+
+      # Queue downloads for the enabled components
+      - js: ${{HEROES_ENABLED}}
+        then:
+          - queue-download: /tmp/HEROES_pidstat_${{FILE_ID:all}}.log
+      - js: ${{VILLAINS_ENABLED}}
+        then:
+          - queue-download: /tmp/VILLAINS_pidstat_${{FILE_ID:all}}.log
+      - js: ${{LOCATIONS_ENABLED}}
+        then:
+          - queue-download: /tmp/LOCATIONS_pidstat_${{FILE_ID:all}}.log
+      - js: ${{FIGHTS_ENABLED}}
+        then:
+          - queue-download: /tmp/FIGHTS_pidstat_${{FILE_ID:all}}.log
+
+      - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
+        then:
+          - sh: |
+              # Cleanly stop all pidstat processes associated with this file run
+              # This replaces the need to track individual PID variables
+              sudo pkill -f "pidstat .*_pidstat_${{FILE_ID:all}}.log" || echo "pidstat already stopped"
+
   # measure RSS
   run-pmap:
-    # WAIT_FOR: which signal should it wait before starting
-    # WAIT_END: which signal should it wait before stopping
-    # FILE_ID: a name to identify the generated file if multiple runs
-    - js: ${{PMAP_ENABLED}}
-      then:
-        # --- INITIALIZE STATES BEFORE THE LOOP ---
-        - js: ${{HEROES_ENABLED}}
-          then:
-            - sh: rm -f /tmp/HEROES_rss_${{FILE_ID:all}}.log
-            - sh: CONTAINER_PID=${{HOST.HEROES_REST_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
-              then:
-                - set-state: HEROES_TARGET_PID
+  # WAIT_FOR: which signal should it wait before starting
+  # WAIT_END: which signal should it wait before stopping
+  # FILE_ID: a name to identify the generated file if multiple runs
+  - js: ${{PMAP_ENABLED:false}}
+    then:
+      # --- INITIALIZE STATES BEFORE THE LOOP ---
+      - sh: |
+          # Define target apps, their enabled states, and container PIDs
+          TARGETS=(
+            "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
+            "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
+            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+            "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
+          )
 
-        - js: ${{VILLAINS_ENABLED}}
-          then:
-            - sh: rm -f /tmp/VILLAINS_rss_${{FILE_ID:all}}.log
-            - sh: CONTAINER_PID=${{HOST.VILLAINS_REST_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
-              then:
-                - set-state: VILLAINS_TARGET_PID
+      # --- RUN THE BENCHMARK LOOP ---
+      - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
+      - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
+        then:
+          - sh:
+              silent: true
+              ignore-exit-code: true
+              command: |
+                # Re-declare array inside the loop so the shell iteration has context
+                TARGETS=(
+                  "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
+                  "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
+                  "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+                  "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
+                )
+                
+                for TARGET in "${TARGETS[@]}"; do
+                  read -r APP_NAME IS_ENABLED CONTAINER_PID <<< "$TARGET"
+                
+                  if [ "$IS_ENABLED" = "true" ] && [ "$CONTAINER_PID" != "0" ]; then
+                    LOG_FILE="/tmp/${APP_NAME}_rss_${{FILE_ID:all}}.log"
+                
+                    echo -n "$(date +"%I:%M:%S %p")  " >> "$LOG_FILE"
+                    # Target container PID directly with sudo
+                    sudo pmap -x $CONTAINER_PID ${{PMAP_PARAMS:}} 2>> "$LOG_FILE" | grep total >> "$LOG_FILE"
+                  fi
+                done
+          - sleep: 1s
 
-        - js: ${{LOCATIONS_ENABLED}}
-          then:
-            - sh: rm -f /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log
-            - sh: CONTAINER_PID=${{HOST.LOCATIONS_GRPC_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
-              then:
-                - set-state: LOCATIONS_TARGET_PID
-
-        - js: ${{FIGHTS_ENABLED}}
-          then:
-            - sh: rm -f /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-            - sh: CONTAINER_PID=${{HOST.FIGHTS_REST_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
-              then:
-                - set-state: FIGHTS_TARGET_PID
-
-        # --- RUN THE BENCHMARK LOOP ---
-        - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
-        - repeat-until: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
-          then:
-            - js: ${{HEROES_ENABLED}}
-              then:
-                - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/HEROES_rss_${{FILE_ID:all}}.log
-                  silent: true
-                - sh:
-                    command: sudo pmap -x ${{HEROES_TARGET_PID}} ${{PMAP_PARAMS:}} 2>> /tmp/HEROES_rss_${{FILE_ID:all}}.log | grep total >> /tmp/HEROES_rss_${{FILE_ID:all}}.log
-                    ignore-exit-code: true
-
-            - js: ${{VILLAINS_ENABLED}}
-              then:
-                - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/VILLAINS_rss_${{FILE_ID:all}}.log
-                  silent: true
-                - sh:
-                    command: sudo pmap -x ${{VILLAINS_TARGET_PID}} ${{PMAP_PARAMS:}} 2>> /tmp/VILLAINS_rss_${{FILE_ID:all}}.log | grep total >> /tmp/VILLAINS_rss_${{FILE_ID:all}}.log
-                    ignore-exit-code: true
-
-            - js: ${{LOCATIONS_ENABLED}}
-              then:
-                - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log
-                  silent: true
-                - sh:
-                    command: sudo pmap -x ${{LOCATIONS_TARGET_PID}} ${{PMAP_PARAMS:}} 2>> /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log | grep total >> /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log
-                    ignore-exit-code: true
-
-            - js: ${{FIGHTS_ENABLED}}
-              then:
-                - sh: echo -n "$(date +"%I:%M:%S %p")  " >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-                  silent: true
-                - sh:
-                    command: sudo pmap -x ${{FIGHTS_TARGET_PID}} ${{PMAP_PARAMS:}} 2>> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log | grep total >> /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
-                    ignore-exit-code: true
-
-            - sleep: 1s
-
-        # After the benchmark is terminated and the loop ends, queue the downloads
-        - js: ${{HEROES_ENABLED}}
-          then:
-            - queue-download: /tmp/HEROES_rss_${{FILE_ID:all}}.log
-        - js: ${{VILLAINS_ENABLED}}
-          then:
-            - queue-download: /tmp/VILLAINS_rss_${{FILE_ID:all}}.log
-        - js: ${{LOCATIONS_ENABLED}}
-          then:
-            - queue-download: /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log
-        - js: ${{FIGHTS_ENABLED}}
-          then:
-            - queue-download: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
+      # --- QUEUE DOWNLOADS ---
+      # After the benchmark is terminated and the loop ends, queue the downloads
+      - js: ${{HEROES_ENABLED}}
+        then:
+          - queue-download: /tmp/HEROES_rss_${{FILE_ID:all}}.log
+      - js: ${{VILLAINS_ENABLED}}
+        then:
+          - queue-download: /tmp/VILLAINS_rss_${{FILE_ID:all}}.log
+      - js: ${{LOCATIONS_ENABLED}}
+        then:
+          - queue-download: /tmp/LOCATIONS_rss_${{FILE_ID:all}}.log
+      - js: ${{FIGHTS_ENABLED}}
+        then:
+          - queue-download: /tmp/FIGHTS_rss_${{FILE_ID:all}}.log
 
   run-strace:
   # WAIT_FOR: which signal should it wait before starting 
@@ -150,8 +179,8 @@ scripts:
     - wait-for: ${{WAIT_FOR:HF_BENCHMARK_STARTED}}
     - js: ${{FIGHTS_ENABLED}}
       then:
-      - log: starting strace against ${{HOST.FIGHTS_REST_PID}}..
-      - sh: strace -p ${{HOST.FIGHTS_REST_PID}} ${{STRACE_PARAMS:}} 2> /tmp/FIGHTS_strace_${{FILE_ID:all}}.log & export FIGHTS_STRACE_PID="$!"
+      - log: starting strace against ${{HOST.FIGHTS_TARGET_PID}}..
+      - sh: strace -p ${{HOST.FIGHTS_TARGET_PID}} ${{STRACE_PARAMS:}} 2> /tmp/FIGHTS_strace_${{FILE_ID:all}}.log & export FIGHTS_STRACE_PID="$!"
       - queue-download: /tmp/FIGHTS_strace_${{FILE_ID:all}}.log
     - wait-for: ${{WAIT_END:HF_BENCHMARK_TERMINATED}}
       then:
