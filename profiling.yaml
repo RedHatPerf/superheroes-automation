@@ -21,7 +21,7 @@ scripts:
       with:
         ENABLED: ${{LOCATIONS_ENABLED:false}}
         CONTAINER_PID: ${{HOST.LOCATIONS_GRPC_PID}}
-        TARGET_STATE_NAME: LOCATIONS_GRPC_TARGET_PID
+        TARGET_STATE_NAME: LOCATIONS_TARGET_PID
 
     - log: "get-target-pid for fights ${{FIGHTS_ENABLED:false}}:${{HOST.FIGHTS_REST_PID:0}}"
     - script: get-target-pid
@@ -72,7 +72,7 @@ scripts:
           TARGETS=(
             "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
             "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
-            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_TARGET_PID:0}}"
             "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
           )
           
@@ -122,7 +122,7 @@ scripts:
           TARGETS=(
             "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
             "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
-            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+            "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_TARGET_PID:0}}"
             "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
           )
 
@@ -138,7 +138,7 @@ scripts:
                 TARGETS=(
                   "HEROES ${{HEROES_ENABLED}} ${{HOST.HEROES_TARGET_PID:0}}"
                   "VILLAINS ${{VILLAINS_ENABLED}} ${{HOST.VILLAINS_TARGET_PID:0}}"
-                  "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_GRPC_TARGET_PID:0}}"
+                  "LOCATIONS ${{LOCATIONS_ENABLED}} ${{HOST.LOCATIONS_TARGET_PID:0}}"
                   "FIGHTS ${{FIGHTS_ENABLED}} ${{HOST.FIGHTS_TARGET_PID:0}}"
                 )
                 
