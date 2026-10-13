@@ -90,8 +90,7 @@ scripts:
   build-jvm:
     - sh: >
         (
-          set -o pipefail;
-          set -x;
+          set -ex -o pipefail;
           ./mvnw --no-transfer-progress clean package -DskipTests \
           -Dmaven.compiler.release=25 \
           -Dquarkus.http.host=0.0.0.0 \
@@ -99,12 +98,10 @@ scripts:
         )
     - sh: |
         (
-          set -o pipefail;
-          set -x;
+          set -ex -o pipefail;
           build_svc() {
             local svc=$1
             local cpus=$2
-            # Notice the parameter added below
             ${{CONTAINER_RUNTIME}} build ${{CONTAINER_RUNTIME_PARAMS}} --ulimit=nofile=1048576:1048576 \
               -f ./$svc/src/main/docker/Dockerfile.jvm -t quay.io/quarkus-super-heroes/$svc:${{SUPERHEROES_CUSTOM_TAG}} \
               --network host --build-arg=DS_SERVER=${{= getHostname( '${{DS_SERVER}}' )}} \
@@ -112,10 +109,10 @@ scripts:
               --build-arg=BASE_IMAGE=${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} \
               --memory 1G --cpuset-cpus $cpus ./$svc/ | tee -a /tmp/superheroes.build.log
           }
-          ${{HEROES_ENABLED}} && build_svc rest-heroes ${{HEROES_REST_CPU}} || true
-          ${{VILLAINS_ENABLED}} && build_svc rest-villains ${{VILLAINS_REST_CPU}} || true
-          ${{LOCATIONS_ENABLED}} && build_svc grpc-locations ${{LOCATIONS_GRPC_CPU}} || true
-          ${{FIGHTS_ENABLED}} && build_svc rest-fights ${{FIGHTS_REST_CPU}} || true
+          if [ "${{HEROES_ENABLED}}" = "true" ]; then build_svc rest-heroes ${{HEROES_REST_CPU}}; fi
+          if [ "${{VILLAINS_ENABLED}}" = "true" ]; then build_svc rest-villains ${{VILLAINS_REST_CPU}}; fi
+          if [ "${{LOCATIONS_ENABLED}}" = "true" ]; then build_svc grpc-locations ${{LOCATIONS_GRPC_CPU}}; fi
+          if [ "${{FIGHTS_ENABLED}}" = "true" ]; then build_svc rest-fights ${{FIGHTS_REST_CPU}}; fi
         )
 
   build-native:
