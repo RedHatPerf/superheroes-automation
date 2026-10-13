@@ -197,7 +197,7 @@ scripts:
     # - js: ${{FIGHTS_ENABLED}}
       # then:
     - queue-download: /tmp/${{MAIN_SERVICE_ID}}_perfstat_${{FILE_ID:all}}.log
-    - sh: CONTAINER_PID=${{HOST.${{MAIN_SERVICE_ID}}_REST_PID}}; TARGET_PID=$(pgrep -P $CONTAINER_PID 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
+    - sh: CONTAINER_PID=${{HOST.${{MAIN_SERVICE_ID}}_REST_PID}}; TARGET_PID=$(pgrep -P "$CONTAINER_PID" 2>/dev/null || echo $CONTAINER_PID); echo $TARGET_PID
       then:
         - set-state: PERFSTAT_TARGET_PID
     - log: starting perf stat against ${{PERFSTAT_TARGET_PID}}..
