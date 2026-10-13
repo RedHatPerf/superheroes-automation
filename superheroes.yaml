@@ -661,7 +661,6 @@ scripts:
       - queue-download: ${{JIT_SERVER_LOGS_FILE}}
       - sh: ${{CONTAINER_RUNTIME}} logs ${{HOST.JIT_SERVER_POD_ID}} 2>&1 | tee ${{JIT_SERVER_LOGS_FILE}} > /dev/null
   # then, force and remove all pods if needed
-  - sh: docker commit rest-heroes rest-heroes-commit || true
   - sh: ${{CONTAINER_RUNTIME}} ps -aq --filter "name=jit-server|rest-villains|rest-heroes|grpc-locations|rest-fights|ui-super-heroes" | xargs -r ${{CONTAINER_RUNTIME}} rm -f
   - sh: lsof -ti:${{HEROES_REST_PORT}},${{VILLAINS_REST_PORT}},${{LOCATIONS_GRPC_PORT}},${{FIGHTS_REST_PORT}},${{JIT_SERVER_PORT}},${{FIGHTS_UI_PORT}} | xargs -r kill -9
   - signal: CLEANUP_SUT_FINISHED
