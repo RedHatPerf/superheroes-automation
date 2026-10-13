@@ -15,18 +15,26 @@ scripts:
 
     # Sanity check: Ensure required states are provided for non-native builds
     - sh: |
-        if [ "${{IS_NATIVE}}" = "false" ] || [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
-          if [ -z "${{IMAGE_REPOSITORY}}" ] || [ -z "${{BASE_IMAGE}}" ]; then
-            echo "FATAL: IMAGE_REPOSITORY and BASE_IMAGE states must be provided"
-            exit 1
+        if [ "${{COPY_DOCKER}}" = "true" ]; then
+          if [ "${{IS_NATIVE}}" = "false" ] || [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
+            if [ -z "${{IMAGE_REPOSITORY:}}" ] || [ -z "${{BASE_IMAGE:}}" ]; then
+              echo "GLOBAL_FATAL_ERROR: IMAGE_REPOSITORY and BASE_IMAGE states must be provided"
+            fi
           fi
         fi
+      watch:
+        - regex: "GLOBAL_FATAL_ERROR: (.*)"
+          then:
+            - abort: "${{1}}"
 
     - sh: |
         if [ -z "${{SUPERHEROES_CUSTOM_TAG:}}" ]; then
-          echo "FATAL: SUPERHEROES_CUSTOM_TAG states must be provided"
-          exit 1
+          echo "GLOBAL_FATAL_ERROR: SUPERHEROES_CUSTOM_TAG states must be provided"
         fi
+      watch:
+        - regex: "GLOBAL_FATAL_ERROR: (.*)"
+          then:
+            - abort: "${{1}}"
 
     # Conditionally build the custom base image if required (replacing prepare-images-super)
     - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi10.minimal /tmp
