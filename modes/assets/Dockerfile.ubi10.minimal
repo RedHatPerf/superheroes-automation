@@ -1,5 +1,5 @@
-# Use RHEL UBI9 Minimal base
-FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
+# Use RHEL UBI10 Minimal base
+FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 
 USER root
 RUN microdnf install -y tar gzip shadow-utils time zip unzip findutils which && microdnf clean all
