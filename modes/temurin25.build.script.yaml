@@ -4,7 +4,7 @@
 states:
   IMAGE_REPOSITORY: localhost/my-base
   BASE_IMAGE: java25-tem
-  JAVA_VERSION: temurin-25.0.4
+  BUILD_JAVA_VERSION: temurin-25.0.4
   BASE_IMAGE_JAVA_VERSION: 25.0.4-tem
   SUPERHEROES_CUSTOM_TAG: temurin
   BUILD_BASE_IMAGE: true

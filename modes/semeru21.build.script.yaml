@@ -4,6 +4,6 @@
 states:
   IMAGE_REPOSITORY: icr.io/appcafe/ibm-semeru-runtimes
   BASE_IMAGE: open-21-jdk-ubi9-minimal
-  JAVA_VERSION: semeru-openj9-21.0.9
+  BUILD_JAVA_VERSION: semeru-openj9-21.0.9
   BASE_IMAGE_JAVA_VERSION: 21.0.9-sem
   SUPERHEROES_CUSTOM_TAG: semeru

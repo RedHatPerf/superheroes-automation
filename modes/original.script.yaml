@@ -5,5 +5,5 @@ states:
   COPY_DOCKER: false
   # mise id (core-install does not accept sdkman ids); the previous
   # 26.0.2+1.1-tem value has no working sdkman entry upstream
-  JAVA_VERSION: temurin-25.0.4 # used only to build the code
+  BUILD_JAVA_VERSION: temurin-25.0.4 # used only to build the code
   SUPERHEROES_CUSTOM_TAG: original

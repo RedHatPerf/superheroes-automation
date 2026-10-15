@@ -5,15 +5,15 @@ USER root
 RUN microdnf install -y tar gzip shadow-utils time zip unzip findutils which && microdnf clean all
 
 # Accept build-time argument with a default fallback
-ARG JAVA_VERSION
-ENV JAVA_VERSION=${JAVA_VERSION}
+ARG BUILD_JAVA_VERSION
+ENV BUILD_JAVA_VERSION=${BUILD_JAVA_VERSION}
 ENV SDKMAN_DIR="/root/.sdkman"
 
 # Install SDKMAN and Java
 RUN curl -s "https://get.sdkman.io" | bash && \
     bash -c "source $SDKMAN_DIR/bin/sdkman-init.sh && \
-    sdk install java $JAVA_VERSION && \
-    sdk default java $JAVA_VERSION"
+    sdk install java $BUILD_JAVA_VERSION && \
+    sdk default java $BUILD_JAVA_VERSION"
 
 ENV JAVA_HOME="${SDKMAN_DIR}/candidates/java/current"
 ENV PATH="${JAVA_HOME}/bin:${PATH}"

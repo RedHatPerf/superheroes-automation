@@ -42,7 +42,7 @@ scripts:
     - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi10.minimal /tmp
     - sh: >
         if [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
-          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg JAVA_VERSION="${{BASE_IMAGE_JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
+          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg BUILD_JAVA_VERSION="${{BASE_IMAGE_JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
         fi
 
     - script: clone-superheroes
@@ -68,7 +68,7 @@ scripts:
     # different naming scheme).
     - script: core-install
       with:
-        TOOLS: "java@${{JAVA_VERSION}}"
+        TOOLS: "java@${{BUILD_JAVA_VERSION}}"
 
     - read-state: ${{IS_NATIVE}}
       then:
@@ -187,7 +187,7 @@ states:
   IMAGE_REPOSITORY:
   BASE_IMAGE:
   # host Maven toolchain, as a mise id (e.g. temurin-25.0.4)
-  JAVA_VERSION:
+  BUILD_JAVA_VERSION:
   # JDK baked into container base images, as an sdkman id (e.g. 25.0.4-tem)
   BASE_IMAGE_JAVA_VERSION:
   SUPERHEROES_CUSTOM_TAG:

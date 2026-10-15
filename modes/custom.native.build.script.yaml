@@ -4,6 +4,6 @@
 states:
   IS_NATIVE: true
   BASE_IMAGE: ubi-quarkus-mandrel-builder-image:jdk-21
-  JAVA_VERSION: mandrel-23.1.5
+  BUILD_JAVA_VERSION: mandrel-23.1.5
   BASE_IMAGE_JAVA_VERSION: 23.1.5.r21-mandrel
   SUPERHEROES_CUSTOM_TAG: native-debuginfo
