@@ -12,57 +12,10 @@ globals:
     }
 
 scripts:
-  install-sdkman: #https://sdkman.io/install
-  - sh:
-      command: sdk help
-      prompt:
-        "Would you like to upgrade now? (Y/n): ": "Y"
-    then:
-    - regex: ".*command not found"
-      then:
-      - sh: curl -s "https://get.sdkman.io" | bash
-        then:
-        - regex: "Enjoy"
-          else:
-          - abort: failed to install SDKMAN
-      - sh: source "$HOME/.sdkman/bin/sdkman-init.sh"
-      # else:
-      # - sh: sdk selfupdate force
-      #   then:
-      #   - regex: "Successfully upgraded SDKMAN"
-      #     else:
-      #     - abort: failed to upgrade SDKMAN
-  - sh:
-      command: sdk version
-      prompt:
-        "Would you like to upgrade now? (Y/n): ": "Y"
-      # SDKMAN 5.9.1+575
-    then:
-    - regex: "SDKMAN (?<RUN.sdk_version>[\\d\\.\\+]+)"
-  
-  sdk-select-java:
-  - script: install-sdkman # requires util.yaml
-  - sh:
-      command: sdk install java ${{JAVA_VERSION:21.0.5-tem}}
-      prompt:
-        "set as default? (Y/n): ": "Y"
-  - sh:
-      command: sdk use java ${{JAVA_VERSION:21.0.5-tem}}
-
-  sdk-select-jbang:
-  - script: install-sdkman # requires util.yaml
-  - sh:
-      command: sdk install jbang ${{JBANG_VERSION:0.121.0}}
-      prompt:
-        "set as default? (Y/n): ": "Y"
-  - sh:
-      command: sdk use jbang ${{JBANG_VERSION:0.121.0}}
-
-  install-hyperfoil-catalog:
-  - script: sdk-select-jbang
-    # it should be able to automatically fetch it by running the following cmd
-  - sh: jbang catalog list hyperfoil
-
+  # (sdkman retired with the core-install/mise pilot: install-sdkman,
+  # sdk-select-java and sdk-select-jbang are deleted. Host toolchains go
+  # through core/core-install.script.yaml; container base images still use
+  # sdkman inside modes/assets/Dockerfile.ubi*.minimal for now.)
   extract-service-pid:
   # CONTAINER_ID: the id of the running container
   # STATE_PID: the state where the pid should be saved to
@@ -137,9 +90,6 @@ scripts:
   - set-state: RUN.${{AVG_STATE}} ${{${{AVG_STATE}}}}
 
 states:
-  JBANG_VERSION: "0.121.0"
-  JAVA_VERSION: "21.0.5-tem"
-
   # set to true if the container entrypoints are wrappers
   # i.e., the main process is not the entrypoint itself
   IS_ENTRYPOINT_WRAPPER: false

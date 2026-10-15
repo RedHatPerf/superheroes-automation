@@ -28,7 +28,7 @@ The load testing is performed using [Hyperfoil](https://github.com/Hyperfoil/Hyp
 
 Therefore, the only required tool that you have to install is [jbang](https://www.jbang.dev/documentation/guide/latest). 
 
-Checkout the [installation guide](https://www.jbang.dev/documentation/guide/latest/installation.html) for more details on how you can install it, the suggested approach is by using [sdkman](https://sdkman.io/) - which is installed right away by the qDup script if not present already. 
+Checkout the [installation guide](https://www.jbang.dev/documentation/guide/latest/installation.html) for more details on how you can install it, the suggested approach is by using [mise](https://mise.jdx.dev/) - which is installed right away by the qDup script if not present already. 
 
 
 ## Run using script
@@ -70,37 +70,39 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] 
 #### Build images with a specific host JDK and get all heroes locally
 
 ```bash
-./run.sh semeru.build get-all-heroes hyperfoil local --java-version 25.0.4-tem
+./run.sh temurin25.build get-all-heroes hyperfoil local '-S JAVA_VERSION=temurin-25.0.4'
 ```
 
-Note this selects the JDK running the Maven build; the benchmarked images are still the mode's own (Semeru-based for `semeru.build`). Any qDup state can also be overridden directly with `-S NAME=value` in `[benchmark_params]`, e.g. `'-S JAVA_VERSION=25.0.4-tem'` is equivalent to `--java-version 25.0.4-tem`.
+Note this selects the JDK running the Maven build; the benchmarked images are still the mode's own. `JAVA_VERSION` is a [mise](https://mise.jdx.dev/) id (e.g. `temurin-25.0.4`, `semeru-openj9-21.0.9`, `mandrel-23.1.5`), installed on demand by [`core/core-install.script.yaml`](/core/core-install.script.yaml). The JDK baked into container base images is the separate `BASE_IMAGE_JAVA_VERSION` state (an sdkman id, e.g. `25.0.4-tem`). Any qDup state can be overridden directly with `-S NAME=value` in `[benchmark_params]`.
 
-#### Build plain JVM images with a custom JDK 26 and get all heroes locally
+#### Build plain JVM images with a custom JDK and get all heroes locally
 
 ```bash
-./run.sh jdk26.build get-all-heroes hyperfoil local
+./run.sh temurin25.build get-all-heroes hyperfoil local
 ```
 
-The [`jdk26.build`](/modes/jdk26.build.script.yaml) mode builds plain JVM images (no CRIU/AOT) from [`modes/assets/jdk26/`](/modes/assets/jdk26/) for benchmarking JDKs without official images. It accepts `--java-version` (Maven toolchain, default `25.0.4-tem`), `--runtime-base-image` (benchmarked JDK, default `docker.io/library/eclipse-temurin:26-jdk`), and `-S JAVA_OPTS_APPEND="..."` for runtime JVM flags. Use `-S SUPERHEROES_CUSTOM_TAG=<tag>` to keep images of different runtimes side by side.
+The `temurin25.build` mode (see [`modes/unified.build.script.yaml`](/modes/unified.build.script.yaml)) builds plain JVM images for benchmarking JDKs without official images. It accepts `-S JAVA_VERSION=<mise-id>` (Maven toolchain) and `-S JAVA_OPTS_APPEND="..."` for runtime JVM flags. Use `-S SUPERHEROES_CUSTOM_TAG=<tag>` to keep images of different runtimes side by side.
 
-#### Benchmark Temurin 26 (default)
+#### Benchmark Temurin 27
 
 ```bash
-./run.sh jdk26.build get-all-heroes hyperfoil local
+./run.sh temurin27.build get-all-heroes hyperfoil local
 ```
 
-#### Benchmark Semeru 26 (OpenJ9)
+#### Benchmark Semeru 21 (OpenJ9)
 
 ```bash
-./run.sh jdk26.build get-all-heroes hyperfoil local '-S SUPERHEROES_CUSTOM_TAG=semeru26' --runtime-base-image icr.io/appcafe/ibm-semeru-runtimes:open-26-jdk-ubi9-minimal
+./run.sh semeru21.build get-all-heroes hyperfoil local
 ```
+
+(`semeru26` is retired: Semeru 26 is not an LTS and sees no upstream investment. Semeru 25 remains available in the mise catalog should an LTS mode be needed.)
 
 #### Set JVM flags for all services
 
-Runtime JVM flags go through `-S JAVA_OPTS_APPEND="..."`, honored by both the prebuilt images (`run-java.sh`) and `jdk26.build` images (`entrypoint.sh`):
+Runtime JVM flags go through `-S JAVA_OPTS_APPEND="..."`, honored by both the prebuilt images (`run-java.sh`) and custom-built JVM images (`start-quarkus.sh`):
 
 ```bash
-./run.sh jdk26.build get-all-heroes hyperfoil local '-S JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Xms2g -Xmx2g -XX:+UnlockExperimentalVMOptions -XX:+UseCompactObjectHeaders" -S HEROES_REST_MEMORY=3G'
+./run.sh temurin25.build get-all-heroes hyperfoil local '-S JAVA_OPTS_APPEND="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Xms2g -Xmx2g -XX:+UnlockExperimentalVMOptions -XX:+UseCompactObjectHeaders" -S HEROES_REST_MEMORY=3G'
 ```
 
 Notes:
