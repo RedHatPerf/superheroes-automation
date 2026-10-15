@@ -5,9 +5,6 @@ states:
   IMAGE_REPOSITORY: localhost/my-base
   BASE_IMAGE: java27-tem
   BUILD_JAVA_VERSION: temurin-27
-  # JDK placed inside the container base image (sdkman naming scheme).
-  # WARNING: 27.0.0-tem is a guess at sdkman's id for Temurin 27; the
-  # base-image build fails loudly on first use if the id does not exist.
-  BASE_IMAGE_JAVA_VERSION: 27.0.0-tem
+  BASE_IMAGE_JAVA_VERSION: temurin-27
   SUPERHEROES_CUSTOM_TAG: temurin
   BUILD_BASE_IMAGE: true

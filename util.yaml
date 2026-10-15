@@ -12,10 +12,6 @@ globals:
     }
 
 scripts:
-  # (sdkman retired with the core-install/mise pilot: install-sdkman,
-  # sdk-select-java and sdk-select-jbang are deleted. Host toolchains go
-  # through core/core-install.script.yaml; container base images still use
-  # sdkman inside modes/assets/Dockerfile.ubi*.minimal for now.)
   extract-service-pid:
   # CONTAINER_ID: the id of the running container
   # STATE_PID: the state where the pid should be saved to

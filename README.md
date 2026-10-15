@@ -5,7 +5,7 @@ Automation for running quarkus superheroes benchmark load tests
 
 TL;DR
 
-Install `jbang` tool using `sdkman`.
+Install `jbang` tool using [mise](https://mise.jdx.dev/).
 
 ### QDup
 
@@ -40,14 +40,14 @@ It uses qDup under the hood, therefore be sure you have properly installed it in
 
 ```bash
 $ ./run.sh
-Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] [benchmark_params] [--java-version <sdkman-id>]
+Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] [benchmark_params] [--java-version <mise-id>]
 ```
 
 * `<native|jvm|<custom>>`:  which superheroes images you'd like to use, either [`native`](/modes/native.script.yaml) or [`jvm`](/modes/jvm.script.yaml). Modes are extensible by creating a custom (`/modes/<custom>.script.yaml`).
 * `<benchmark_folder>`:     which benchmark you'd like to run among those listed in [/benchmarks](/benchmarks/) folder.
 * `[local|remote]`:         where you would like to start the services, either [`local`](/envs/local.env.yaml) to run on `localhost` or [`remote`](/envs/remote.env.yaml). Default is `local`.  **Please note:** for `remote` environments, the current user MUST have passwordless ssh access to any remote machines defined in `/envs/remote.env.yaml`.
 * `[additional_params]`:     any additional parameters you want to override. E.g. to override the default Hyperfoil benchmark templates parameters, '-S HF_BENCHMARK_PARAMS="-PDURATION=20s"'. This strictly depends on the HF benchmark definition. Default is empty string.
-* `[--java-version]`:     host JDK (sdkman id, e.g. `25.0.4-tem`) for the Maven toolchain in image-build modes that consume the `BUILD_JAVA_VERSION` state (`semeru.build`, `jdk26.build`, modes derived from [`custom.build.tmpl.yaml`](/modes/custom.build.tmpl.yaml)). It does not change the container runtime: `semeru.build` images stay Semeru-based with OpenJ9-only options, so a non-Semeru JDK there only affects the build, not what gets benchmarked. `custom.native.build` hardcodes its Mandrel JDK, and the prebuilt `native`/`jvm` modes ignore the flag (`run.sh` warns). May appear anywhere on the command line.
+* `[--java-version]`:     host JDK (mise id, e.g. `temurin-25`) for the Maven toolchain in image-build modes that consume the `BUILD_JAVA_VERSION` state (`semeru.build`, `jdk26.build`, modes derived from [`custom.build.tmpl.yaml`](/modes/custom.build.tmpl.yaml)). It does not change the container runtime: `semeru.build` images stay Semeru-based with OpenJ9-only options, so a non-Semeru JDK there only affects the build, not what gets benchmarked. `custom.native.build` hardcodes its Mandrel JDK, and the prebuilt `native`/`jvm` modes ignore the flag (`run.sh` warns). May appear anywhere on the command line.
 * `[--runtime-base-image]`: container base image providing the benchmarked JDK, for build modes that consume the `RUNTIME_BASE_IMAGE` state (currently `jdk26.build`, default `docker.io/library/eclipse-temurin:26-jdk`). Optional: when unset, the mode's default is used. Ignored by modes that don't build images (`run.sh` warns). May appear anywhere on the command line.
 
 > [!NOTE]
@@ -70,10 +70,10 @@ Usage: ./run.sh <native|jvm> <benchmark_folder> [hyperfoil|loop] [local|remote] 
 #### Build images with a specific host JDK and get all heroes locally
 
 ```bash
-./run.sh temurin25.build get-all-heroes hyperfoil local '-S BUILD_JAVA_VERSION=temurin-25.0.4'
+./run.sh temurin25.build get-all-heroes hyperfoil local '-S BUILD_JAVA_VERSION=temurin-25'
 ```
 
-Note this selects the JDK running the Maven build; the benchmarked images are still the mode's own. `BUILD_JAVA_VERSION` is a [mise](https://mise.jdx.dev/) id (e.g. `temurin-25.0.4`, `semeru-openj9-21.0.9`, `mandrel-23.1.5`), installed on demand by [`core/core-install.script.yaml`](/core/core-install.script.yaml). The JDK baked into container base images is the separate `BASE_IMAGE_JAVA_VERSION` state (an sdkman id, e.g. `25.0.4-tem`). Any qDup state can be overridden directly with `-S NAME=value` in `[benchmark_params]`.
+Note this selects the JDK running the Maven build; the benchmarked images are still the mode's own. `BUILD_JAVA_VERSION` is a [mise](https://mise.jdx.dev/) id (e.g. `temurin-25`, `semeru-openj9-21`, `mandrel-23.1`), installed on demand by [`core/core-install.script.yaml`](/core/core-install.script.yaml). The JDK baked into container base images is the separate `BASE_IMAGE_JAVA_VERSION` state (also a mise id, e.g. `temurin-25`). Any qDup state can be overridden directly with `-S NAME=value` in `[benchmark_params]`.
 
 #### Build plain JVM images with a custom JDK and get all heroes locally
 

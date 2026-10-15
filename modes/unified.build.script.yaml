@@ -186,9 +186,9 @@ states:
   # the following must be empty and should be overwritten
   IMAGE_REPOSITORY:
   BASE_IMAGE:
-  # host Maven toolchain, as a mise id (e.g. temurin-25.0.4)
+  # host Maven toolchain, as a mise id (e.g. temurin-25)
   BUILD_JAVA_VERSION:
-  # JDK baked into container base images, as an sdkman id (e.g. 25.0.4-tem)
+  # JDK baked into container base images, as a mise id (e.g. temurin-25)
   BASE_IMAGE_JAVA_VERSION:
   SUPERHEROES_CUSTOM_TAG:
 
