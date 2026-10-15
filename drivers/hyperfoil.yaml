@@ -4,6 +4,9 @@ scripts:
 
   setup-driver:
   - script: setup-hyperfoil
+  - script: core-install
+    with:
+      TOOLS: "java@${{DRIVER_JAVA_VERSION}} jbang@${{JBANG_VERSION}}"
   - script: install-hyperfoil-catalog
   - script: upload-benchmark
 
@@ -32,6 +35,10 @@ scripts:
       ignore-exit-code: true
   
   # [end] Interface
+
+  install-hyperfoil-catalog:
+  # it should be able to automatically fetch it by running the following cmd
+  - sh: jbang catalog list hyperfoil
 
   setup-hyperfoil:
   - sh: 
@@ -75,6 +82,10 @@ scripts:
       - ctrlC
 
 states:
+  # host JDK for the driver (jbang launcher), as a mise id
+  DRIVER_JAVA_VERSION: temurin-25.0.4
+  # jbang version, as a mise id
+  JBANG_VERSION: 0.121.0
   # path to the benchmark file relative to the root of this repo, e.g. ./benchmarks/get-all-villains
   HF_BENCHMARK_PATH:
   # name of the benchmark file, e.g. get-all-villains.hf.yaml

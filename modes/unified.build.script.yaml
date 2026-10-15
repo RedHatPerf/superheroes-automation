@@ -42,7 +42,7 @@ scripts:
     - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi10.minimal /tmp
     - sh: >
         if [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
-          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg JAVA_VERSION="${{JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
+          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg JAVA_VERSION="${{BASE_IMAGE_JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
         fi
 
     - script: clone-superheroes
@@ -62,9 +62,13 @@ scripts:
           else:
             - log: "Using the repository image"
 
-    - script: sdk-select-java
+    # Installs the host JDK that runs the Maven build below. NOTE: this is
+    # intentionally a different state than BASE_IMAGE_JAVA_VERSION, which
+    # names the JDK baked into container base images (different tool,
+    # different naming scheme).
+    - script: core-install
       with:
-        JAVA_VERSION: ${{JAVA_VERSION}}
+        TOOLS: "java@${{JAVA_VERSION}}"
 
     - read-state: ${{IS_NATIVE}}
       then:
@@ -75,7 +79,6 @@ scripts:
             - script: build-jvm
 
     - queue-download: /tmp/superheroes.build.log
-
     - set-state: HEROES_REST_IMAGE "quay.io/quarkus-super-heroes/rest-heroes:${{SUPERHEROES_CUSTOM_TAG}}"
     - set-state: VILLAINS_REST_IMAGE "quay.io/quarkus-super-heroes/rest-villains:${{SUPERHEROES_CUSTOM_TAG}}"
     - set-state: LOCATIONS_GRPC_IMAGE "quay.io/quarkus-super-heroes/grpc-locations:${{SUPERHEROES_CUSTOM_TAG}}"
@@ -96,7 +99,7 @@ scripts:
           ./mvnw --no-transfer-progress clean package -DskipTests \
           -Dmaven.compiler.release=25 \
           -Dquarkus.http.host=0.0.0.0 \
-          -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log                        
+          -pl ${{= getProjects( ${{HEROES_ENABLED}}, ${{VILLAINS_ENABLED}}, ${{LOCATIONS_ENABLED}}, ${{FIGHTS_ENABLED}} )}} | tee /tmp/superheroes.build.log
         )
     - sh: |
         (
@@ -183,7 +186,10 @@ states:
   # the following must be empty and should be overwritten
   IMAGE_REPOSITORY:
   BASE_IMAGE:
+  # host Maven toolchain, as a mise id (e.g. temurin-25.0.4)
   JAVA_VERSION:
+  # JDK baked into container base images, as an sdkman id (e.g. 25.0.4-tem)
+  BASE_IMAGE_JAVA_VERSION:
   SUPERHEROES_CUSTOM_TAG:
 
   MAP_USER_GROUP: false

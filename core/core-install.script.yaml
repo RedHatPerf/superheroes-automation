@@ -1,0 +1,55 @@
+# Generic tool installer backed by mise (https://mise.jdx.dev).
+#
+# Contract:
+# - core-install-mise: ensures mise itself is present (idempotent). The PATH
+#   export runs as its own step so it persists in qDup's per-host shell.
+# - core-install: ensures every tool in TOOLS is installed (idempotent,
+#   cached in MISE_DATA_DIR) and exports the combined tool env (JAVA_HOME,
+#   PATH, ...) into the shell via a single ad-hoc `mise env` call. No config
+#   file is written anywhere, so there is nothing to trust and nothing
+#   lingers on shared hosts. Later steps invoke tools BARE. TOOLS is
+#   required and fails fast via the GLOBAL_FATAL_ERROR watch/abort idiom
+#   (a bare `exit 1` does NOT fail a qDup script, it hangs the run).
+#
+# NOTE: pass the FULL tool set in one call. `mise env` computes the env per
+# invocation, so a second eval for one more tool would clobber shared vars
+# (e.g. JAVA_HOME) back to global defaults.
+#
+# Versions use mise ids (temurin-25.0.4, semeru-openj9-21.0.9, 0.121.0),
+# NOT sdkman ids. Exact builds float within a prefix; the `mise ls` output
+# printed by core-install records the resolved build for reproducibility.
+
+scripts:
+  core-install-mise:
+  - sh: export PATH="$HOME/.local/bin:$PATH"
+  - sh:
+      command: mise --version
+    then:
+    - regex: "command not found"
+      then:
+      - sh: curl -fsSL https://mise.run | sh
+      - sh:
+          command: mise --version
+        then:
+        - regex: "20[0-9]{2}\\."
+          else:
+          - abort: failed to install mise
+
+  core-install:
+  # TOOLS: space-separated "tool@version" list, e.g.
+  # "java@temurin-25.0.4 jbang@0.121.0". One call per host with the full
+  # set: env is computed per eval, so splitting tools across calls would
+  # clobber shared vars (JAVA_HOME) back to global defaults.
+  - sh: |
+      PFX="GLOBAL_FATAL_ERROR:"
+      if [ -z "${{TOOLS:}}" ]; then
+        echo "${PFX} core-install requires TOOLS state, e.g. TOOLS: java@temurin-25.0.4"
+      fi
+    watch:
+      - regex: "GLOBAL_FATAL_ERROR: (?<FATAL_MSG>.*)"
+        then:
+          - abort: "${{FATAL_MSG}}"
+  - script: core-install-mise
+  - sh: mise -q -y install ${{TOOLS}}
+  - sh: eval "$(mise env ${{TOOLS}} -s bash)"
+  - sh: mise ls

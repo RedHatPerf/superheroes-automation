@@ -108,7 +108,7 @@ else
     QDUP_CMD="$QDUP_CMD modes/${MODE}.script.yaml "
 fi
 
-QDUP_CMD="$QDUP_CMD profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml util.yaml qdup.yaml"
+QDUP_CMD="$QDUP_CMD profiling.yaml drivers/${DRIVER}.yaml superheroes.yaml core/core-install.script.yaml util.yaml qdup.yaml"
 
 echo Executing: "$QDUP_CMD"
 
