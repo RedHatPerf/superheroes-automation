@@ -4,14 +4,14 @@ FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 USER root
 RUN microdnf install -y tar gzip shadow-utils time zip unzip findutils which && microdnf clean all
 
-# Accept build-time argument as a mise id (e.g. temurin-25.0.4, semeru-openj9-21.0.9)
-ARG BUILD_JAVA_VERSION
-ENV BUILD_JAVA_VERSION=${BUILD_JAVA_VERSION}
+# Accept build-time argument as a mise id (e.g. temurin-25, semeru-openj9-21)
+ARG BASE_IMAGE_JAVA_VERSION
+ENV BASE_IMAGE_JAVA_VERSION=${BASE_IMAGE_JAVA_VERSION}
 
 # Install mise and Java; bake resolved JAVA_HOME into the image
 RUN curl -fsSL https://mise.run | sh
-RUN /root/.local/bin/mise install java@${BUILD_JAVA_VERSION} && \
-    ln -s "$(/root/.local/bin/mise where java@${BUILD_JAVA_VERSION})" /usr/local/java
+RUN /root/.local/bin/mise install java@${BASE_IMAGE_JAVA_VERSION} && \
+    ln -s "$(/root/.local/bin/mise where java@${BASE_IMAGE_JAVA_VERSION})" /usr/local/java
 
 ENV JAVA_HOME="/usr/local/java"
 ENV PATH="/usr/local/java/bin:/root/.local/bin:${PATH}"

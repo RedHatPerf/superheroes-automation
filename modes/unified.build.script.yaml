@@ -42,7 +42,7 @@ scripts:
     - upload: ${{ENV.SCRIPT_DIR}}/assets/Dockerfile.ubi10.minimal /tmp
     - sh: >
         if [ "${{BUILD_BASE_IMAGE}}" = "true" ]; then
-          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg BUILD_JAVA_VERSION="${{BASE_IMAGE_JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
+          ${{CONTAINER_RUNTIME}} build -f /tmp/Dockerfile.ubi10.minimal --build-arg BASE_IMAGE_JAVA_VERSION="${{BASE_IMAGE_JAVA_VERSION}}" -t ${{IMAGE_REPOSITORY}}:${{BASE_IMAGE}} .
         fi
 
     - script: clone-superheroes
@@ -64,8 +64,7 @@ scripts:
 
     # Installs the host JDK that runs the Maven build below. NOTE: this is
     # intentionally a different state than BASE_IMAGE_JAVA_VERSION, which
-    # names the JDK baked into container base images (different tool,
-    # different naming scheme).
+    # names the JDK baked into container base images.
     - script: core-install
       with:
         TOOLS: "java@${{BUILD_JAVA_VERSION}}"
