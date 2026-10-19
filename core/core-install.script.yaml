@@ -45,24 +45,29 @@ scripts:
       if [ -z "${{TOOLS:}}" ]; then
         echo "${PFX} core-install requires TOOLS state, e.g. TOOLS: java@temurin-25.0.4"
       fi
+      for spec in ${{TOOLS:}}; do
+        case "$spec" in
+          ?*@?*) ;;
+          *)
+            echo "${PFX} invalid tool entry '${spec}'; expected TOOL@VERSION (e.g. java@temurin-25.0.4)"
+            ;;
+        esac
+      done
     watch:
       - regex: "GLOBAL_FATAL_ERROR: (?<FATAL_MSG>.*)"
         then:
           - abort: "${{FATAL_MSG}}"
   - script: core-install-mise
+  # Workaround: MISE_OFFLINE=true mise install fails even for cached tools,
+  # so we must check local availability before running install.
+  # MISE_OFFLINE=true will be used on new perf lab harmony hosts
   - sh: |
       MISSING_TOOLS=""
       for spec in ${{TOOLS}}; do
         tool_name="${spec%%@*}"
         tool_ver="${spec#*@}"
-        if [ "$tool_name" = "$tool_ver" ]; then
-          if [ -z "$(mise ls --installed --no-header "$tool_name" 2>/dev/null)" ]; then
-            MISSING_TOOLS="${MISSING_TOOLS} ${spec}"
-          fi
-        else
-          if [ -z "$(mise ls --installed --no-header --prefix "$tool_ver" "$tool_name" 2>/dev/null)" ]; then
-            MISSING_TOOLS="${MISSING_TOOLS} ${spec}"
-          fi
+        if [ -z "$(mise ls --installed --no-header --prefix "$tool_ver" "$tool_name" 2>/dev/null)" ]; then
+          MISSING_TOOLS="${MISSING_TOOLS} ${spec}"
         fi
       done
       if [ -n "$MISSING_TOOLS" ]; then
