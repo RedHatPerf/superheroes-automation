@@ -4,16 +4,14 @@ FROM registry.access.redhat.com/ubi10/ubi-minimal:latest
 USER root
 RUN microdnf install -y tar gzip shadow-utils time zip unzip findutils which && microdnf clean all
 
-# Accept build-time argument with a default fallback
-ARG JAVA_VERSION
-ENV JAVA_VERSION=${JAVA_VERSION}
-ENV SDKMAN_DIR="/root/.sdkman"
+# Accept build-time argument as a mise id (e.g. temurin-25, semeru-openj9-21)
+ARG BASE_IMAGE_JAVA_VERSION
+ENV BASE_IMAGE_JAVA_VERSION=${BASE_IMAGE_JAVA_VERSION}
 
-# Install SDKMAN and Java
-RUN curl -s "https://get.sdkman.io" | bash && \
-    bash -c "source $SDKMAN_DIR/bin/sdkman-init.sh && \
-    sdk install java $JAVA_VERSION && \
-    sdk default java $JAVA_VERSION"
+# Install mise and Java; bake resolved JAVA_HOME into the image
+RUN curl -fsSL https://mise.run | sh
+RUN /root/.local/bin/mise install java@${BASE_IMAGE_JAVA_VERSION} && \
+    ln -s "$(/root/.local/bin/mise where java@${BASE_IMAGE_JAVA_VERSION})" /usr/local/java
 
-ENV JAVA_HOME="${SDKMAN_DIR}/candidates/java/current"
-ENV PATH="${JAVA_HOME}/bin:${PATH}"
+ENV JAVA_HOME="/usr/local/java"
+ENV PATH="/usr/local/java/bin:/root/.local/bin:${PATH}"
